@@ -1,7 +1,10 @@
 import numpy as np
+from numpy.random import RandomState
 from agents import Agent
 
-EPISODES = 50
+# EPISODES = 150000
+EPISODES = 100000
+
 
 class Solver(object):
     def __init__(self, modp, agent):
@@ -9,19 +12,26 @@ class Solver(object):
         self.agent = agent
     
     def train_agent(self, weights):
+
+        learning_stats = {
+            "average_cumulative_reward": [],
+            "cumulative_reward": [],
+        }
+
+        average_cumulative_reward = 0.0
         # Loop over episodes
-        for _ in range(EPISODES):
+        for i in range(EPISODES):
             state = self.env.reset()
             terminate = False
+            cumulative_reward = 0.0
 
             # Loop over time-steps
             while not terminate:
-
                 # Getthe action
                 action = self.agent.get_action(state)
 
                 # Perform the action
-                next_state, reward, terminate = self.env.step(a)
+                next_state, reward, terminate, _ = self.env.step(action)
                 
                 actual_r = weights.dot(reward)
 
@@ -31,24 +41,37 @@ class Solver(object):
                 # Update statistics
                 cumulative_reward += actual_r
                 state = next_state
+
+            # Per-episode statistics
+            average_cumulative_reward *= 0.95
+            average_cumulative_reward += 0.05 * cumulative_reward
+
+            ep_stats = [i, cumulative_reward, average_cumulative_reward]
+
+            learning_stats["cumulative_reward"].append(ep_stats[1])
+            learning_stats["average_cumulative_reward"].append(ep_stats[2])
+
+        return learning_stats
     
     def eval_agent(self):
         state = self.env.reset()
+        # print(self.env._x, self.env._y)
+
         cnt = 0
         tot_reward_mo = 0
         terminate = False
 
         while not terminate:
-            action = self.agent.get_action(state)
-            _, reward, terminate = self.env.step(action)
+            action = self.agent.get_action(state, greedy=True)
+            state, reward, terminate, _ = self.env.step(action)
 
-            if cnt > 100:
+            if cnt > 1000:
                 terminate = True
-            tot_reward_mo = tot_reward_mo + reward * np.power(self.agent.gamma, cnt)
+            tot_reward_mo = tot_reward_mo + reward #* np.power(self.agent.gamma, cnt)
             cnt = cnt + 1
 
-        return tot_reward_mo
 
+        return tot_reward_mo
 
     def solve(self, weights):
         self.train_agent(weights)
@@ -58,4 +81,28 @@ class Solver(object):
         return V
        
 
-       
+if __name__ == "__main__":
+    from env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
+    from agents import QLearningAgent
+    import matplotlib.pyplot as plt
+    
+    random_state = RandomState(42)
+    
+    env = BountyfulSeaTreasureEnv()
+
+    n_actions = env.nA
+    n_states = env.nS
+    print(n_actions, n_states)
+    agent = QLearningAgent(n_actions=n_actions, n_states=n_states, decay=0.999997, random_state=random_state)
+    solver = Solver(env, agent)
+
+    learning_stats = solver.train_agent(np.array([1, 0]))
+    agent.show_qtable()
+
+    solver.eval_agent()
+
+    plt.plot(learning_stats["average_cumulative_reward"])
+    plt.show()
+    plt.imshow(env.render())
+    plt.show()
+

@@ -1,3 +1,7 @@
+import sys
+sys.path.insert(0, '..')
+
+
 import math
 import queue
 import numpy as np
@@ -5,15 +9,17 @@ from time import time
 from recordclass import recordclass
 from solver import Solver
 from agents import QLearningAgent
-from env import DeepSeaTreasure
-from utils import plot_ccs
+from env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
+from utils import plot_ccs, plot_ccs_2
+from numpy.random import RandomState
+
 
 ##########################################
 # TODO :
 
 ##########################################
 
-MIN_IMPROVEMENT = 0.01
+MIN_IMPROVEMENT = 0.1
 
 # A V_P contains: - the value of a policy (for each objective)
 #                 - the range for which in the current CCS
@@ -27,7 +33,7 @@ Point = recordclass("Point", ["x", "y"])
 
 def scalarize(V_PI, w1):
     w0 = 1 - w1
-    return w0 * V_PI.obj1 + w1 + V_PI.obj2
+    return w0 * V_PI.obj1 + w1 * V_PI.obj2
 
 def intersection(p1, p2, p3, p4):
     """
@@ -48,10 +54,10 @@ def hasImprovement(w1, V, S):
 
     currentHeight = None
     for V in S:
-        if V.start.x == w1:
+        if V.start.x == w1.val:
             currentHeight = V.start.y
             break
-    x, y = intersection(Point(w1, 0), Point(w1, currentHeight), Point(0, V_PI.obj1), Point(1, V_PI.obj2))
+    x, y = intersection(Point(w1.val, 0), Point(w1.val, currentHeight), Point(0, V_PI.obj1), Point(1, V_PI.obj2))
     if y > currentHeight:
         return True
     else:
@@ -61,13 +67,16 @@ def removeObseleteValueVectors(V_PI, S):
     for V in S:
         s = V.start.x
         e = V.end.x
+
         if (scalarize(V_PI, s) > scalarize(V, s)) and (scalarize(V_PI, e) > scalarize(V, e)):
            S.remove(V)
 
 def removeObseleteWeights(Q, s, e):
-    for cornerWeight in Q:
+    for item in Q.queue:
+        # each item is a tupe (priority, cornerweight)
+        cornerWeight = item[1]
         if (s < cornerWeight.val < e) and (cornerWeight.improvement > -math.inf):
-            Q.remove(cornerWeight)
+            Q.queue.remove(item)
 
 def newCornerWeights(V_PI, S):
     """
@@ -111,16 +120,19 @@ def estimateImprovement(cornerWeight, S):
 
 
 if __name__ == "__main__":
+    
+    random_state = RandomState(42)
 
     start = time()
 
-    env = DeepSeaTreasure()
-    n_actions = env.action_spec[2][1]
-    agent = QLearningAgent(epsilon=0.7, n_actions=n_actions, n_states=100)
+    env = BountyfulSeaTreasureEnv()
+    n_actions = env.nA
+    n_states = env.nS
+    agent = QLearningAgent(n_actions=n_actions, n_states=n_states, decay=0.999997, random_state=random_state)
     solver = Solver(env, agent)
 
-    S = set()  # Partial CCS
-    W = set()  # Visited weights
+    S = []  # Partial CCS
+    W = []  # Visited weights
     Q = queue.PriorityQueue()  # To prioritize the weights
 
     # Add the two extremum values for the weights in the Queue
@@ -130,35 +142,46 @@ if __name__ == "__main__":
 
     num_iter = 0 
     while not Q.empty():
+        print("\nITERATION: %d" % num_iter)
         # Get corner weight from Queue
-        w1 = Q.get()[1]
+        weight = Q.get()
+        w1 = weight[1]
+        W.append(w1.val)
+
         # Call solver with this weight
         w = np.array([1 - w1.val, w1.val])
+        print("Solving for weights: ", w)
         obj1, obj2 = solver.solve(w)
         # Get V_PI from solver
         V_PI = V_P(obj1=obj1, obj2=obj2, start=Point(x=0, y=obj1), end=Point(x=1, y=obj2))
+        print(V_PI)
 
-        W.add(w)
+        # plot CSS + New value vector
+        # plot_ccs_2(S + [V_PI])
 
-        if V_PI not in S: #and hasImprovement(w1, V_PI, S)
+        # W.add(w)
+
+        if V_PI not in S and hasImprovement(w1, V_PI, S):
             # Remove obseletes Vs from S
             removeObseleteValueVectors(V_PI, S)
 
             # Find new cornerweights
             W_V_PI = newCornerWeights(V_PI, S)
-            S.add(V_PI)
-            removeObseleteWeights(Q, V_PI.start, V_PI.end)
+            S.append(V_PI)
+            removeObseleteWeights(Q, V_PI.start.x, V_PI.end.x)
 
             for cornerWeight in W_V_PI:
                 cornerWeight.improvement = estimateImprovement(cornerWeight.val, S)
-                if cornerWeight.improvement > MIN_IMPROVEMENT:
+                if cornerWeight.improvement > MIN_IMPROVEMENT and cornerWeight.val not in W:
                     # priority = -improvement because high priority = small number
-                    Q.put((-cornerWeight.improvement, cornerWeight.val))
+                    Q.put((-cornerWeight.improvement, cornerWeight))
+
         
         num_iter += 1
+
     
 
     total_time = time() - start
     print("Number of iterations: %d" % num_iter)
-    print("Time (s): total_time")
-    plot_ccs(S)
+    print("Time (s): %.2f" % total_time)
+    plot_ccs_2(S)
