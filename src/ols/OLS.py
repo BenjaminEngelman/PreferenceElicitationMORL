@@ -40,13 +40,14 @@ def intersection(p1, p2, p3, p4):
     Compute the intersection of the lines defined as
     (p1, p2) and (p2, p3)
     """
+    # print(p1, p2, p3, p4)
     numX = (p1.x*p2.y-p1.y*p2.x)*(p3.x-p4.x)-(p1.x-p2.x)*(p3.x*p4.y-p3.y*p4.x)
     numY = (p1.x*p2.y-p1.y*p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x*p4.y-p3.y*p4.x)
     denum = (p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x)
 
     px = numX / denum
     py = numY / denum
-    return Point(px, py)
+    return Point(round(px, 4), round(py, 4))
 
 def hasImprovement(w1, V, S):
     if len(S) == 0 or w1.improvement == -math.inf:
@@ -137,8 +138,8 @@ if __name__ == "__main__":
 
     # Add the two extremum values for the weights in the Queue
     # With infinite priority
-    Q.put((-math.inf, CornerWeight(val=0, improvement=-math.inf)))
-    Q.put((-math.inf, CornerWeight(val=1, improvement=-math.inf)))
+    Q.put((-math.inf, CornerWeight(val=0.0, improvement=-math.inf)))
+    Q.put((-math.inf, CornerWeight(val=1.0, improvement=-math.inf)))
 
     num_iter = 0 
     while not Q.empty():
@@ -153,17 +154,19 @@ if __name__ == "__main__":
         print("Solving for weights: ", w)
         obj1, obj2 = solver.solve(w)
         # Get V_PI from solver
-        V_PI = V_P(obj1=obj1, obj2=obj2, start=Point(x=0, y=obj1), end=Point(x=1, y=obj2))
+        V_PI = V_P(obj1=obj1, obj2=obj2, start=Point(x=0.0, y=obj1), end=Point(x=1.0, y=obj2))
         print(V_PI)
 
-        # plot CSS + New value vector
-        # plot_ccs_2(S + [V_PI])
 
-        # W.add(w)
+        W.append(w1.val)
+
 
         if V_PI not in S and hasImprovement(w1, V_PI, S):
             # Remove obseletes Vs from S
             removeObseleteValueVectors(V_PI, S)
+
+            # plot CSS + New value vector
+            plot_ccs_2(S + [V_PI])
 
             # Find new cornerweights
             W_V_PI = newCornerWeights(V_PI, S)

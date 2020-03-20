@@ -1,7 +1,17 @@
 todo.txt
-MORL/
+tensorboard/
+*.png
+*.log
+*.pyc
+
+# IDEs
 .vscode
 .idea
 .ipynb_checkpoints
+
+
+# code papers
+MORL/
 gp_pref_elicit/
 PreferenceElicitation.jl
+experiments/

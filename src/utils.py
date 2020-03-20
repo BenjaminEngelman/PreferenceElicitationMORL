@@ -55,10 +55,11 @@ def plot_ccs_2(S):
     
     # ax.set_title("CCS approximated by OLS")
     ax[0].set_xlabel("w1")
+    ax[0].set_xlim([0, 1])
     ax[0].set_ylabel("Vw")    
 
     ax[1].set_xlabel("Time")
     ax[1].set_ylabel("Treasure")
 
-    plt.show()
+    plt.savefig(f"figures/ols.png")
 

@@ -1,0 +1,60 @@
+Hidden weights: [0.28261752 0.71738248]
+
+
+Iteration 0
+Current weights estimates :[1 0]
+Returns for current weights: [166. -13.]
+
+Iteration 1
+Current weights estimates :[0 1]
+Returns for current weights: [ 7. -1.]
+Comparison between: [ 7. -1.] and [166. -13.]
+User prefers: [166. -13.]
+
+Iteration 2
+Current weights estimates :[0.5 0.5]
+Returns for current weights: [161. -11.]
+Comparison between: [161. -11.] and [166. -13.]
+User prefers: [161. -11.]
+
+Iteration 3
+Current weights estimates :[0.28107241 0.71892759]
+Returns for current weights: [158. -10.]
+Comparison between: [158. -10.] and [161. -11.]
+User prefers: [158. -10.]
+
+Iteration 4
+Current weights estimates :[0.19378659 0.80621341]
+Returns for current weights: [148.  -8.]
+Comparison between: [148.  -8.] and [158. -10.]
+User prefers: [158. -10.]
+
+Iteration 5
+Current weights estimates :[0.29598373 0.70401627]
+Returns for current weights: [158. -10.]
+Comparison between: [158. -10.] and [158. -10.]
+User prefers: [158. -10.]
+
+Iteration 6
+Current weights estimates :[0.29598373 0.70401627]
+Returns for current weights: [158. -10.]
+Comparison between: [158. -10.] and [158. -10.]
+User prefers: [158. -10.]
+
+Iteration 7
+Current weights estimates :[0.29598373 0.70401627]
+Returns for current weights: [158. -10.]
+Comparison between: [158. -10.] and [158. -10.]
+User prefers: [158. -10.]
+
+Iteration 8
+Current weights estimates :[0.29598373 0.70401627]
+Returns for current weights: [158. -10.]
+Comparison between: [158. -10.] and [158. -10.]
+User prefers: [158. -10.]
+
+Iteration 9
+Current weights estimates :[0.29598373 0.70401627]
+Returns for current weights: [158. -10.]
+Comparison between: [158. -10.] and [158. -10.]
+User prefers: [158. -10.]

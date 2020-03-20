@@ -3,7 +3,8 @@ from numpy.random import RandomState
 from agents import Agent
 
 # EPISODES = 150000
-EPISODES = 100000
+# EPISODES = 100000
+EPISODES = 110000
 
 
 class Solver(object):
@@ -21,11 +22,14 @@ class Solver(object):
         average_cumulative_reward = 0.0
         # Loop over episodes
         for i in range(EPISODES):
+            # if i % 1000 == 0:
+            #     print(f"Episode {i}")
             state = self.env.reset()
             terminate = False
             cumulative_reward = 0.0
 
             # Loop over time-steps
+            step = 0
             while not terminate:
                 # Getthe action
                 action = self.agent.get_action(state)
@@ -33,14 +37,19 @@ class Solver(object):
                 # Perform the action
                 next_state, reward, terminate, _ = self.env.step(action)
                 
-                actual_r = weights.dot(reward)
+                weighted_reward = weights.dot(reward)
 
                 # Update agent
-                self.agent.update(state, action, actual_r, next_state)
+                self.agent.update( state, action, weighted_reward, next_state, terminate)
 
                 # Update statistics
-                cumulative_reward += actual_r
+                cumulative_reward += weighted_reward
                 state = next_state
+                step += 1
+            # if i % 1000 == 0:
+            #     print(f"Num steps: {step}")
+            #     print(f"Cumulative reward: {cumulative_reward}")
+            #     print()
 
             # Per-episode statistics
             average_cumulative_reward *= 0.95
@@ -82,7 +91,7 @@ class Solver(object):
        
 
 if __name__ == "__main__":
-    from env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
+    from env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv, OtherDeepSeaTreasure
     from agents import QLearningAgent
     import matplotlib.pyplot as plt
     

@@ -4,6 +4,8 @@ from utils import argmax
 
 DIRECTION = ["U", "R", "D", "L"]
 
+
+
 class Agent():
     
     def __init__(self, n_actions, decay, random_state):
@@ -35,15 +37,16 @@ class QLearningAgent(Agent):
     def __init__(self, n_actions, n_states, decay=0.999999, random_state=1):
         super().__init__(n_actions, decay=decay, random_state=random_state)
         self.n_states = n_states
-        self.qtable = [np.array([0.]*self.n_actions) for state in range(n_states)]
-        # self.qtable = [np.random.uniform(0, 100, n_actions) for state in range(n_states)]
+        # self.qtable = [np.array([0.]*self.n_actions) for state in range(n_states)]
+        self.qtable = [np.random.uniform(-1, 175, n_actions) for state in range(n_states)]
     
     def reset(self):
         self.qtable = [np.array([0.]*self.n_actions) for state in range(self.n_states)]
         self.epsilon = self.max_epsilon
     
-    def update(self, s, a, r, n_s):
-        self.qtable[s][a] += self.lr * (r + self.gamma * (max(self.qtable[n_s])) - self.qtable[s][a])
+    def update(self, s, a, r, n_s, d):
+        target = r if d else r + self.gamma * (max(self.qtable[n_s]))
+        self.qtable[s][a] += self.lr * (target - self.qtable[s][a])
         self.decayEpsilon()
     
     def get_action(self, state, greedy=False):
