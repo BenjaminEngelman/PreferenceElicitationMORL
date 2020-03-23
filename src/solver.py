@@ -91,6 +91,7 @@ class Solver(object):
        
 
 if __name__ == "__main__":
+    
     from env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv, OtherDeepSeaTreasure
     from agents import QLearningAgent
     import matplotlib.pyplot as plt

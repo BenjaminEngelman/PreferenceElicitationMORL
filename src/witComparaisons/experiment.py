@@ -21,7 +21,7 @@ from user import User
 Result = recordclass("Result", ["weights", "returns"])
 
 
-def get_best_sol(weights):
+def     _best_sol(weights):
 
     solutions = [
         [5, -1],
