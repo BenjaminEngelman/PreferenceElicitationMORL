@@ -59,7 +59,7 @@ def estimateWeightsReg(X, y):
 
 
 
-def main(method="opti"):
+def findWeightsWithAbsReturns(method="opti"):
     seed = 42
     random_state = RandomState(seed)
 

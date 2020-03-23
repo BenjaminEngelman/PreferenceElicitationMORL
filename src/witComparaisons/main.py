@@ -21,7 +21,7 @@ from user import User
 Result = recordclass("Result", ["weights", "returns"])
 
 
-def     _best_sol(weights):
+def get_best_sol(weights):
 
     solutions = [
         [5, -1],
@@ -150,7 +150,7 @@ def findweights(solver, user, random_state):
     return history
 
 
-def main(method=1, noise=1, seed=42):
+def findWeightsWithComparison(method=1, noise=1, seed=42):
     random_state = RandomState(seed)
 
     # Setup of the environment and agent
