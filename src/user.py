@@ -1,34 +1,40 @@
 import bayes_logistic as bl
 import numpy as np
 import sys
+from constants import BST_MAX_TREASURE
+from utils import get_best_sol_BST
+
 sys.path.insert(0, '..')
 
 
 class User(object):
-    def __init__(self, num_objectives=2, std_noise=0.001, random_state=1, weights=None):
+    def __init__(self, num_objectives=2, std_noise=0.001, random_state=None, weights=None):
         # Hack to normalize utilites to 0 - 1 range
         # This works only for the BountyfulSeaTreasureEnv
         # TODO: Find another way to normalize that is not hardcoded.
-        self.max_utility = 1  # Don't normalize
 
         self.random_state = random_state
+        self.num_objectives = num_objectives
+        self.std_noise = std_noise
 
-        if weights != None:
+        # Save all comparaisons between policies
+        # As well as their outcomes (i.e preferences)
+        self.comparisons = []
+        self.outcomes = []
+
+        if weights is not None:
+            assert len(weights) == num_objectives
             self.hidden_weights = weights
 
         else:
-            self.num_objectives = num_objectives
             self.hidden_weights = self.random_state.uniform(0.0, 1, num_objectives)
             self.hidden_weights /= np.sum(self.hidden_weights)
-            self.std_noise = std_noise
+        
+        self.max_utility = get_best_sol_BST(self.hidden_weights)
 
-            # Save all comparaisons between policies
-            # As well as their outcomes (i.e preferences)
-            self.comparisons = []
-            self.outcomes = []
 
     def get_utility(self, values, with_noise=True):
-        noise = self.random_state.uniform(0, self.std_noise)
+        noise = self.random_state.normal(0, self.std_noise)
         utility = 0
         for i in range(self.num_objectives):
             utility += values[i] * self.hidden_weights[i]
@@ -36,8 +42,9 @@ class User(object):
         utility /= self.max_utility
         if with_noise:
             utility += noise
-
         return utility
+    
+
 
     def save_comparison(self, p1, p2, result):
         """

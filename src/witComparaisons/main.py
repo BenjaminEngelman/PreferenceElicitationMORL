@@ -49,10 +49,10 @@ def get_best_sol(weights):
     return best_sol
 
 
-def plot_history(user, history, noise, seed):
+def plot_weights_history(user, weights_history, noise, seed):
     f, ax = plt.subplots()
-    ax.plot(history,  marker='o')
-    ax.hlines(user.hidden_weights[0], xmin=0, xmax=len(history))
+    ax.plot(weights_history,  marker='o')
+    ax.hlines(user.hidden_weights[0], xmin=0, xmax=len(weights_history))
     # ax.set_yticks(list(np.arange(0, 1, 0.1)))
     ax.set_xlabel("Iteration")
     ax.set_ylabel("w0 estimate")
@@ -60,7 +60,7 @@ def plot_history(user, history, noise, seed):
 
 
 def get_returns_to_compare(returns, prefered_results, rejected_results, previous_comparisons, random_state):
-    print(f"To compare  = {returns} - Choosing between {prefered_results}")
+    # print(f"To compare  = {returns} - Choosing between {prefered_results}")
 
     # Prioritze prefered results
     # If none prefered results can be compared
@@ -80,12 +80,17 @@ def findweights(solver, user, random_state):
     """
     Starts by computing the reward for the policies associated to the 
     [1 0] and [0 1] weights
-    Then asks for comparison between the last return and the previous best
-    Problem : 
+    Then asks for comparison between the last return and the previous best which is different.
+    If no previous best return is different, choose from the rejected returns.
     """
-    history = []
+    logs = {
+        "returns": [],
+        "weights": []
+    }
+
+    weights_history = []
     weights = np.array([1, 0])
-    history.append(weights[0])
+    weights_history.append(weights[0])
 
     prev_weights = weights + 1
     prefered = None
@@ -94,6 +99,7 @@ def findweights(solver, user, random_state):
     rejected_results = []
 
     previous_comparisons = []
+    
 
     # When the difference between two successive estimated weights is below eps. we stop
     epsilon = 1e-3
@@ -107,6 +113,8 @@ def findweights(solver, user, random_state):
         logging.info("Returns for current weights: " + str(returns))
 
         result = Result(weights, returns)
+        logs["returns"].append(returns)
+        logs["weights"].append(weights[0])
 
         if it == 0:
             # The second weight we test is [0, 1]
@@ -140,22 +148,19 @@ def findweights(solver, user, random_state):
 
             weights = user.current_map(prefered.weights)
 
-        history.append(weights[0])
 
         it += 1
 
     # Check expected solution for real weights
     real_sol = get_best_sol(user.hidden_weights)
     logging.info(f"Expected solution for hidden weights of the user was: {real_sol}")
-    return history
+    return logs
 
 
-def findWeightsWithComparison(method=1, noise=1, seed=42):
+def findWeightsWithComparisons(user, env, seed=42):
     random_state = RandomState(seed)
 
     # Setup of the environment and agent
-    n_obj = 2
-    env = BountyfulSeaTreasureEnv()
     n_actions = env.nA
     n_states = env.nS
     agent = QLearningAgent(n_actions=n_actions, n_states=n_states,
@@ -164,28 +169,29 @@ def findWeightsWithComparison(method=1, noise=1, seed=42):
     solver = Solver(env, agent)
 
     # Create a user that will return noisy comparisons
-    user = User(num_objectives=n_obj, std_noise=1, random_state=random_state)
     logging.info("Hidden weights: " + str(user.hidden_weights) + "\n")
 
-    if method == 1:
-        history = findweights(solver, user, random_state)
+    logs = findweights(solver, user, random_state)
 
-    # elif method == 2:
-    #     history = findweights_2(solver, user)
+    return logs
 
-    plot_history(user, history, noise, seed)
 
 
 if __name__ == "__main__":
+
     ts = datetime.datetime.now().timestamp()
     logging.basicConfig(
         format='%(message)s', filename=f'logs/experiment_{ts}.log', level=logging.INFO)
 
-    for std_noise in range(1, 11):
-        logging.info(f"\n#### Noise: {std_noise} ####\n")
+    # for std_noise in range(1, 11):
+    #     logging.info(f"\n#### Noise: {std_noise} ####\n")
 
-        for seed in range(0, 10):
-            logging.info(f"\n#### Seed: {seed} ####\n")
-            main(method=1, noise=std_noise, seed=seed)
+    #     for seed in range(0, 10):
+    #         logging.info(f"\n#### Seed: {seed} ####\n")
+    #         main(method=1, noise=std_noise, seed=seed)
 
-    # main(method=1, noise=1, seed=0)
+    env = BountyfulSeaTreasureEnv()
+    rs = RandomState(42)
+    user = User(num_objectives=2, std_noise=0.001, random_state=RandomState(42), weights=[0, 1])
+    logs = findWeightsWithComparisons(user, env, seed=42)
+    print(logs)

@@ -53,28 +53,25 @@ def estimateWeightsReg(X, y):
 
     # Sum must be between 0 and 1 
     weights = res.x / np.sum(res.x)
-    print(res.x)
-    print(weights)
+    # print(res.x)
+    # print(weights)
     return weights
 
 
 
-def findWeightsWithAbsReturns(method="opti"):
-    seed = 42
+def findWeightsWithAbsReturns(user, env, seed, method="opti"):
     random_state = RandomState(seed)
 
     # Setup of the environment and agent
     n_obj = 2
-    env = BountyfulSeaTreasureEnv()
     n_actions = env.nA
     n_states = env.nS
     agent = QLearningAgent(n_actions=n_actions, n_states=n_states, decay=0.999997, random_state=random_state)
     solver = Solver(env, agent) # Used to train and evaluate the agent on the environements
-    history = []
-
-    # Create a user that will return noisy estimates of its utility 
-    user = User(num_objectives=n_obj, std_noise=0.001, random_state=random_state)
-    print("Hidden weights: " + str(user.hidden_weights) +"\n")
+    logs = {
+        "returns": [],
+        "weights": []
+    }
 
     # Data points seen 
     # X contains the returns obtained so far
@@ -83,25 +80,27 @@ def findWeightsWithAbsReturns(method="opti"):
 
     # We start with an estimate of the weights weights
     weights = np.ones(n_obj) / n_obj
-    history.append(weights[0])
+    # history.append(weights[0])
     prev_weights = weights + 1
 
     # When the difference between two successive estimated weights is below eps. we stop
     epsilon = 1e-3
 
     it = 0
-    while it < 15:# or not (np.abs(prev_weights - weights)<epsilon).all():
-        print("Iteration %d" % it)
-        print("Current weights estimates: " + str(weights))
+    while it < 5:# or not (np.abs(prev_weights - weights)<epsilon).all():
+        # print("Iteration %d" % it)
+        # print("Current weights estimates: " + str(weights))
         # Solve the environement for the random weights
-        w0_to_solve = random_state.uniform(0, 1)
-        w_solve = np.array([w0_to_solve, 1 - w0_to_solve])
-        returns = solver.solve(w_solve)
-        print("Returns for the weights " + str(w_solve) + ": " + str(returns))
+        # w0_to_solve = random_state.uniform(0, 1)
+        # w_solve = np.array([w0_to_solve, 1 - w0_to_solve])
+        returns = solver.solve(weights)
+        # print("Returns for the weights " + str(w_solve) + ": " + str(returns))
+        logs["returns"].append(returns)
+        logs["weights"].append(weights[0])
 
         # Get a noisy estimate of the user utility
         u = user.get_utility(returns)
-        print("Utility of the user: " + str(u) + "\n")
+        # print("Utility of the user: " + str(u) + "\n")
 
         # Add those to our dataset
         X.append(returns)
@@ -117,18 +116,21 @@ def findWeightsWithAbsReturns(method="opti"):
         else:
             print("Wrong method.")
         
-        history.append(weights[0])
+        # history.append(weights[0])
 
         it += 1
+
+    return logs
     
-    f, ax = plt.subplots()
-    ax.plot(history,  marker='o')
-    ax.hlines(user.hidden_weights[0], xmin=0, xmax=len(history))
-    # ax.set_yticks(list(np.arange(0, 1, 0.1)))
-    ax.set_xlabel("Iteration")
-    ax.set_ylabel("w0 estimate")
-    plt.savefig(f"figures/exp_method_{method}.png")
+    # f, ax = plt.subplots()
+    # ax.plot(history,  marker='o')
+    # ax.hlines(user.hidden_weights[0], xmin=0, xmax=len(history))
+    # # ax.set_yticks(list(np.arange(0, 1, 0.1)))
+    # ax.set_xlabel("Iteration")
+    # ax.set_ylabel("w0 estimate")
+    # plt.savefig(f"figures/exp_method_{method}.png")
 
 
 if __name__ == "__main__":
-    main(method="opti")
+    pass
+    # main(method="opti")

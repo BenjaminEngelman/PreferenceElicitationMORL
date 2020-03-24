@@ -1,17 +1,15 @@
+from numpy.random import RandomState
+from utils import plot_ccs, plot_ccs_2
+from env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
+from agents import QLearningAgent
+from solver import Solver
+from recordclass import recordclass
+from time import time
+import numpy as np
+import queue
+import math
 import sys
 sys.path.insert(0, '..')
-
-
-import math
-import queue
-import numpy as np
-from time import time
-from recordclass import recordclass
-from solver import Solver
-from agents import QLearningAgent
-from env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
-from utils import plot_ccs, plot_ccs_2
-from numpy.random import RandomState
 
 
 ##########################################
@@ -31,9 +29,11 @@ CornerWeight = recordclass("CornerWeight", ["val", "improvement"])
 
 Point = recordclass("Point", ["x", "y"])
 
+
 def scalarize(V_PI, w1):
     w0 = 1 - w1
     return w0 * V_PI.obj1 + w1 * V_PI.obj2
+
 
 def intersection(p1, p2, p3, p4):
     """
@@ -49,6 +49,7 @@ def intersection(p1, p2, p3, p4):
     py = numY / denum
     return Point(round(px, 4), round(py, 4))
 
+
 def hasImprovement(w1, V, S):
     if len(S) == 0 or w1.improvement == -math.inf:
         return True
@@ -58,11 +59,13 @@ def hasImprovement(w1, V, S):
         if V.start.x == w1.val:
             currentHeight = V.start.y
             break
-    x, y = intersection(Point(w1.val, 0), Point(w1.val, currentHeight), Point(0, V_PI.obj1), Point(1, V_PI.obj2))
+    x, y = intersection(Point(w1.val, 0), Point(
+        w1.val, currentHeight), Point(0, V_PI.obj1), Point(1, V_PI.obj2))
     if y > currentHeight:
         return True
     else:
         return False
+
 
 def removeObseleteValueVectors(V_PI, S):
     for V in S:
@@ -70,7 +73,8 @@ def removeObseleteValueVectors(V_PI, S):
         e = V.end.x
 
         if (scalarize(V_PI, s) > scalarize(V, s)) and (scalarize(V_PI, e) > scalarize(V, e)):
-           S.remove(V)
+            S.remove(V)
+
 
 def removeObseleteWeights(Q, s, e):
     for item in Q.queue:
@@ -78,6 +82,7 @@ def removeObseleteWeights(Q, s, e):
         cornerWeight = item[1]
         if (s < cornerWeight.val < e) and (cornerWeight.improvement > -math.inf):
             Q.queue.remove(item)
+
 
 def newCornerWeights(V_PI, S):
     """
@@ -100,10 +105,11 @@ def newCornerWeights(V_PI, S):
                 V.end.y = Y
                 V_PI.start.x = cornerW
                 V_PI.start.y = Y
-            
+
             cornerWeights.append(CornerWeight(val=cornerW, improvement=None))
 
     return cornerWeights
+
 
 def estimateImprovement(cornerWeight, S):
     """
@@ -116,12 +122,13 @@ def estimateImprovement(cornerWeight, S):
             cornerPoint = V.start
         elif V.end.x == cornerWeight:
             firstPoint = V.start
-    _, height = intersection(firstPoint, lastPoint, Point(cornerWeight, 1000), cornerPoint)
+    _, height = intersection(firstPoint, lastPoint,
+                             Point(cornerWeight, 1000), cornerPoint)
     return height - cornerPoint.y
 
 
-if __name__ == "__main__":
-    
+def ols():
+
     random_state = RandomState(42)
 
     start = time()
@@ -129,7 +136,8 @@ if __name__ == "__main__":
     env = BountyfulSeaTreasureEnv()
     n_actions = env.nA
     n_states = env.nS
-    agent = QLearningAgent(n_actions=n_actions, n_states=n_states, decay=0.999997, random_state=random_state)
+    agent = QLearningAgent(
+        n_actions=n_actions, n_states=n_states, decay=0.999997, random_state=random_state)
     solver = Solver(env, agent)
 
     S = []  # Partial CCS
@@ -141,7 +149,7 @@ if __name__ == "__main__":
     Q.put((-math.inf, CornerWeight(val=0.0, improvement=-math.inf)))
     Q.put((-math.inf, CornerWeight(val=1.0, improvement=-math.inf)))
 
-    num_iter = 0 
+    num_iter = 0
     while not Q.empty():
         print("\nITERATION: %d" % num_iter)
         # Get corner weight from Queue
@@ -154,12 +162,11 @@ if __name__ == "__main__":
         print("Solving for weights: ", w)
         obj1, obj2 = solver.solve(w)
         # Get V_PI from solver
-        V_PI = V_P(obj1=obj1, obj2=obj2, start=Point(x=0.0, y=obj1), end=Point(x=1.0, y=obj2))
+        V_PI = V_P(obj1=obj1, obj2=obj2, start=Point(
+            x=0.0, y=obj1), end=Point(x=1.0, y=obj2))
         print(V_PI)
 
-
         W.append(w1.val)
-
 
         if V_PI not in S and hasImprovement(w1, V_PI, S):
             # Remove obseletes Vs from S
@@ -174,17 +181,19 @@ if __name__ == "__main__":
             removeObseleteWeights(Q, V_PI.start.x, V_PI.end.x)
 
             for cornerWeight in W_V_PI:
-                cornerWeight.improvement = estimateImprovement(cornerWeight.val, S)
+                cornerWeight.improvement = estimateImprovement(
+                    cornerWeight.val, S)
                 if cornerWeight.improvement > MIN_IMPROVEMENT and cornerWeight.val not in W:
                     # priority = -improvement because high priority = small number
                     Q.put((-cornerWeight.improvement, cornerWeight))
 
-        
         num_iter += 1
-
-    
 
     total_time = time() - start
     print("Number of iterations: %d" % num_iter)
     print("Time (s): %.2f" % total_time)
     plot_ccs_2(S)
+
+
+if __name__ == "__main__":
+    ols()
