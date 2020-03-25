@@ -32,7 +32,6 @@ class User(object):
         
         self.max_utility = get_best_sol_BST(self.hidden_weights)
 
-
     def get_utility(self, values, with_noise=True):
         noise = self.random_state.normal(0, self.std_noise)
         utility = 0
@@ -41,7 +40,9 @@ class User(object):
 
         utility /= self.max_utility
         if with_noise:
+            print(f"Utility: {utility}")
             utility += noise
+            print(f"Utility after noise: {utility}")
         return utility
     
 

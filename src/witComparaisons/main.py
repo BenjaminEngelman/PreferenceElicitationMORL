@@ -191,7 +191,8 @@ if __name__ == "__main__":
     #         main(method=1, noise=std_noise, seed=seed)
 
     env = BountyfulSeaTreasureEnv()
-    rs = RandomState(42)
-    user = User(num_objectives=2, std_noise=0.001, random_state=RandomState(42), weights=[0, 1])
-    logs = findWeightsWithComparisons(user, env, seed=42)
+    seed = 0
+    rs = RandomState(seed)
+    user = User(num_objectives=2, std_noise=0.001, random_state=rs, weights=[0.15, 0.85])
+    logs = findWeightsWithComparisons(user, env, seed=seed)
     print(logs)

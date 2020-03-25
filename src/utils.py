@@ -52,7 +52,7 @@ def plot_ccs_2(S):
     f.savefig(f"figures/ols.png")
 
 
-def plot_compareMethods(distances_withComp, distances_withAbsRet, weights_withComp, weights_withAbsRet, optimal_weight):
+def plot_compareMethods(distances_withComp, distances_withAbsRet, weights_withComp, weights_withAbsRet, optimal_weight, noise):
     f, axes = plt.subplots(nrows=1, ncols=2, figsize=(20,7))
     # Distances to optimal return
     axes[0].set_title("Distance to optimal return")
@@ -71,7 +71,7 @@ def plot_compareMethods(distances_withComp, distances_withAbsRet, weights_withCo
     axes[1].hlines(optimal_weight, xmin=0, xmax=len(weights_withAbsRet), label="optimal")
     axes[1].legend()
 
-    f.savefig(f"../figures/comp_methods_{optimal_weight}.png")    
+    f.savefig(f"../figures/comp_methods_{optimal_weight}_noise_{noise}.png")    
 
 def plot_experimentNoise(all_distances, all_weightsEstimates, noise_values, optimal_weight, method):
     f, axes = plt.subplots(nrows=1, ncols=2, figsize=(20,7))

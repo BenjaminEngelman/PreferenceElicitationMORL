@@ -47,6 +47,9 @@ def compareMethods():
     Compare withComparaisons and withAbsReturns
     """
 
+    noise = 0.001
+    seed = 1
+
     for weight in WEIGHTS_LIST:
         print("---------")
         print(f"Weight = {weight}")
@@ -55,40 +58,39 @@ def compareMethods():
         weight_vector = np.array([weight, 1-weight])
         optimal_returns = WEIGHTS_LIST[weight]
 
-        for seed in range(1):
-            random_state = RandomState(seed)
-            env = BountyfulSeaTreasureEnv()
-            user = User(
-                num_objectives=2,
-                std_noise=0.01,
-                random_state=random_state,
-                weights=weight_vector
-            )
+        random_state = RandomState(1)
+        env = BountyfulSeaTreasureEnv()
+        user = User(
+            num_objectives=2,
+            std_noise=noise,
+            random_state=random_state,
+            weights=weight_vector
+        )
 
-            # WithComparaisons
-            logs_comps = findWeightsWithComparisons(user, env, seed=seed)
-            # [2:] because first 2 returns are fixed to get first comparaisons
-            distances_withComp = get_distances_from_optimal_returns(
-                logs_comps["returns"][2:], optimal_returns)
+        # WithComparaisons
+        logs_comps = findWeightsWithComparisons(user, env, seed=seed)
+        # [2:] because first 2 returns are fixed to get first comparaisons
+        distances_withComp = get_distances_from_optimal_returns(
+            logs_comps["returns"][2:], optimal_returns)
 
-            # withAbsReturs
-            logs_abs = findWeightsWithAbsReturns(
-                user, env, seed=seed, method="opti")
-            distances_withAbsRet = get_distances_from_optimal_returns(
-                logs_abs["returns"], optimal_returns)
+        # withAbsReturs
+        logs_abs = findWeightsWithAbsReturns(
+            user, env, seed=seed, method="opti")
+        distances_withAbsRet = get_distances_from_optimal_returns(
+            logs_abs["returns"], optimal_returns)
 
         plot_compareMethods(
             distances_withComp,
             distances_withAbsRet,
             logs_comps["weights"][2:],
             logs_abs["weights"],
-            weight
+            weight,
+            noise
         )
 
 
 def experimentNoise(method):
-    all_distances = []
-    all_weightEstimates = []
+
 
     noise_values = [
         0,
@@ -105,6 +107,8 @@ def experimentNoise(method):
         weight_vector = np.array([weight, 1-weight])
         optimal_returns = WEIGHTS_LIST[weight]
 
+        all_distances = []
+        all_weightEstimates = []
         for noise in noise_values:
             print(f"Noise = {noise}")
             
@@ -133,6 +137,7 @@ def experimentNoise(method):
                 returns = logs["returns"]
                 weights = logs["weights"]
 
+            print(logs)
             distances = get_distances_from_optimal_returns(returns, optimal_returns)
             all_distances.append(distances)
             all_weightEstimates.append(weights)
@@ -149,7 +154,7 @@ def experimentNoise(method):
 
 
 if __name__ == "__main__":
-    compareMethods()
+    # compareMethods()
     experimentNoise("comparisons")
     experimentNoise("absolute")
 
