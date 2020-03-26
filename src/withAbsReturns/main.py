@@ -87,13 +87,13 @@ def findWeightsWithAbsReturns(user, env, seed, method="opti"):
     epsilon = 1e-3
 
     it = 0
-    while it < 5:# or not (np.abs(prev_weights - weights)<epsilon).all():
+    while it < 6:# or not (np.abs(prev_weights - weights)<epsilon).all():
         # print("Iteration %d" % it)
         # print("Current weights estimates: " + str(weights))
         # Solve the environement for the random weights
-        # w0_to_solve = random_state.uniform(0, 1)
-        # w_solve = np.array([w0_to_solve, 1 - w0_to_solve])
-        returns = solver.solve(weights)
+        w0_to_solve = random_state.uniform(0, 1)
+        w_to_solve = np.array([w0_to_solve, 1 - w0_to_solve])
+        returns = solver.solve(w_to_solve)
         # print("Returns for the weights " + str(w_solve) + ": " + str(returns))
         logs["returns"].append(returns)
         logs["weights"].append(weights[0])

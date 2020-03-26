@@ -40,10 +40,8 @@ class User(object):
 
         utility /= self.max_utility
         if with_noise:
-            print(f"Utility: {utility}")
             utility += noise
-            print(f"Utility after noise: {utility}")
-        return utility
+        return np.clip(utility, 0, 1)
     
 
 

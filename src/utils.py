@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from constants import BST_SOLUTIONS 
 
 def get_best_sol_BST(weights):
@@ -13,6 +14,28 @@ def get_best_sol_BST(weights):
             best_sol = sol
 
     return best_sol[0]
+
+def computeFromNestedLists(nested_vals, op):
+    """
+    Computed the mean/var a 2-D array and returns a 1-D array of all of the columns
+    regardless of their dimensions.
+    https://stackoverflow.com/questions/10058227/calculating-mean-of-arrays-with-different-lengths
+    """
+    output = []
+    maximum = 0
+    for lst in nested_vals:
+        if len(lst) > maximum:
+            maximum = len(lst)
+    for index in range(maximum): # Go through each index of longest list
+        temp = []
+        for lst in nested_vals: # Go through each list
+            if index < len(lst): # If not an index error
+                temp.append(lst[index])
+        if op == "mean":
+            output.append(np.nanmean(temp))
+        elif op == "std":
+            output.append(np.std(temp))
+    return output
 
 
 def argmax(l):
@@ -73,22 +96,25 @@ def plot_compareMethods(distances_withComp, distances_withAbsRet, weights_withCo
 
     f.savefig(f"../figures/comp_methods_{optimal_weight}_noise_{noise}.png")    
 
-def plot_experimentNoise(all_distances, all_weightsEstimates, noise_values, optimal_weight, method):
+def plot_experimentNoise(all_distances, std_distances, all_weightsEstimates, std_weightsEstimates, noise_values, optimal_weight, method):
     f, axes = plt.subplots(nrows=1, ncols=2, figsize=(20,7))
+
+    print(std_distances)
+    print(std_weightsEstimates)
 
     # Distances to optimal return
     axes[0].set_title("Distance to optimal return")
     axes[0].set_ylabel("Distance")
     
-    for d, noise_value in zip(all_distances, noise_values):
-        axes[0].plot(d, label=noise_value, marker='o')
+    for d, std, noise_value in zip(all_distances, std_distances, noise_values):
+        axes[0].errorbar(list(range(len(d))), d, yerr=std, label=noise_value, marker='o')
     axes[0].legend()
     
     # Weights estimate
     axes[1].set_title("Weight estimate")
     axes[1].set_ylabel("W0 estimate")
-    for w, noise_value in zip(all_weightsEstimates, noise_values):
-        axes[1].plot(w, label=noise_value, marker='o')
+    for w, std, noise_value in zip(all_weightsEstimates, std_weightsEstimates, noise_values):
+        axes[1].errorbar(list(range(len(w))), w, yerr=std, label=noise_value, marker='o')
 
     axes[1].hlines(optimal_weight, xmin=0, xmax=8, label="optimal")
     axes[1].legend()

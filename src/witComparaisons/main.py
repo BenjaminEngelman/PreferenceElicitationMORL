@@ -104,7 +104,7 @@ def findweights(solver, user, random_state):
     # When the difference between two successive estimated weights is below eps. we stop
     epsilon = 1e-3
     it = 0
-    while it < 15:  # or not (np.abs(prev_weights - weights)<epsilon).all():
+    while it < 10:  # or not (np.abs(prev_weights - weights)<epsilon).all():
         logging.info("\nIteration %d" % it)
         logging.info("Current weights estimates :" + str(weights))
 
