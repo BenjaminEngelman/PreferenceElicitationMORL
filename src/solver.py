@@ -40,7 +40,7 @@ class Solver(object):
                 weighted_reward = weights.dot(reward)
 
                 # Update agent
-                self.agent.update( state, action, weighted_reward, next_state, terminate)
+                self.agent.update( state, action, weighted_reward, next_state, terminate )
 
                 # Update statistics
                 cumulative_reward += weighted_reward

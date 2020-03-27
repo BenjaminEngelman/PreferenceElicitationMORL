@@ -15,3 +15,4 @@ MORL/
 gp_pref_elicit/
 PreferenceElicitation.jl
 experiments/
+minecart/

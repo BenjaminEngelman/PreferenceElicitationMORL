@@ -1,15 +1,16 @@
-from numpy.random import RandomState
-from utils import plot_ccs, plot_ccs_2
-from env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
-from agents import QLearningAgent
-from solver import Solver
+# import sys
+# sys.path.insert(0, '..')
+
+from src.utils import plot_ccs, plot_ccs_2
+from src.env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
+from src.agents import QLearningAgent
+from src.solver import Solver
 from recordclass import recordclass
 from time import time
 import numpy as np
 import queue
 import math
-import sys
-sys.path.insert(0, '..')
+
 
 
 ##########################################
@@ -50,7 +51,7 @@ def intersection(p1, p2, p3, p4):
     return Point(round(px, 4), round(py, 4))
 
 
-def hasImprovement(w1, V, S):
+def hasImprovement(w1, V_PI, S):
     if len(S) == 0 or w1.improvement == -math.inf:
         return True
 
@@ -59,8 +60,9 @@ def hasImprovement(w1, V, S):
         if V.start.x == w1.val:
             currentHeight = V.start.y
             break
-    x, y = intersection(Point(w1.val, 0), Point(
-        w1.val, currentHeight), Point(0, V_PI.obj1), Point(1, V_PI.obj2))
+    x, y = intersection(
+        Point(w1.val, 0), Point(w1.val, currentHeight), Point(0, V_PI.obj1), Point(1, V_PI.obj2)
+    )
     if y > currentHeight:
         return True
     else:
@@ -127,17 +129,10 @@ def estimateImprovement(cornerWeight, S):
     return height - cornerPoint.y
 
 
-def ols():
-
-    random_state = RandomState(42)
-
+def ols(env, agent):
     start = time()
 
-    env = BountyfulSeaTreasureEnv()
-    n_actions = env.nA
-    n_states = env.nS
-    agent = QLearningAgent(
-        n_actions=n_actions, n_states=n_states, decay=0.999997, random_state=random_state)
+
     solver = Solver(env, agent)
 
     S = []  # Partial CCS
@@ -152,6 +147,7 @@ def ols():
     num_iter = 0
     while not Q.empty():
         print("\nITERATION: %d" % num_iter)
+        print(Q.queue)
         # Get corner weight from Queue
         weight = Q.get()
         w1 = weight[1]
@@ -167,7 +163,7 @@ def ols():
         print(V_PI)
 
         W.append(w1.val)
-
+        print(f"W1: {w1}\nV_PI: {V_PI}\nS: {S}")
         if V_PI not in S and hasImprovement(w1, V_PI, S):
             # Remove obseletes Vs from S
             removeObseleteValueVectors(V_PI, S)
@@ -177,9 +173,9 @@ def ols():
 
             # Find new cornerweights
             W_V_PI = newCornerWeights(V_PI, S)
+            
             S.append(V_PI)
             removeObseleteWeights(Q, V_PI.start.x, V_PI.end.x)
-
             for cornerWeight in W_V_PI:
                 cornerWeight.improvement = estimateImprovement(
                     cornerWeight.val, S)
@@ -193,7 +189,3 @@ def ols():
     print("Number of iterations: %d" % num_iter)
     print("Time (s): %.2f" % total_time)
     plot_ccs_2(S)
-
-
-if __name__ == "__main__":
-    ols()

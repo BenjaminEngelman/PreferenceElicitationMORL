@@ -2,6 +2,8 @@ import sys
 sys.path.insert(0, '..')
 
 from time import time
+import logging
+import datetime
 from numpy.random import RandomState
 import numpy as np
 
@@ -80,27 +82,25 @@ def findWeightsWithAbsReturns(user, env, seed, method="opti"):
 
     # We start with an estimate of the weights weights
     weights = np.ones(n_obj) / n_obj
-    # history.append(weights[0])
-    prev_weights = weights + 1
 
-    # When the difference between two successive estimated weights is below eps. we stop
-    epsilon = 1e-3
 
     it = 0
     while it < 6:# or not (np.abs(prev_weights - weights)<epsilon).all():
         # print("Iteration %d" % it)
         # print("Current weights estimates: " + str(weights))
-        # Solve the environement for the random weights
+        # Solve the environement for some random weights
         w0_to_solve = random_state.uniform(0, 1)
         w_to_solve = np.array([w0_to_solve, 1 - w0_to_solve])
         returns = solver.solve(w_to_solve)
         # print("Returns for the weights " + str(w_solve) + ": " + str(returns))
-        logs["returns"].append(returns)
         logs["weights"].append(weights[0])
+        logs["returns"].append(solver.solve(weights)) # Log the returns for the current weight estimate
+
 
         # Get a noisy estimate of the user utility
         u = user.get_utility(returns)
-        # print("Utility of the user: " + str(u) + "\n")
+        logging.info("Utility of the user: " + str(u) + "\n")
+        
 
         # Add those to our dataset
         X.append(returns)
@@ -132,5 +132,13 @@ def findWeightsWithAbsReturns(user, env, seed, method="opti"):
 
 
 if __name__ == "__main__":
-    pass
-    # main(method="opti")
+    ts = datetime.datetime.now().timestamp()
+    logging.basicConfig(
+        format='%(message)s', filename=f'logs/experiment_{ts}.log', level=logging.INFO)
+
+    env = BountyfulSeaTreasureEnv()
+    seed = 1
+    rs = RandomState(seed)
+    user = User(num_objectives=2, std_noise=0.001, random_state=rs, weights=[0.25, 0.75])
+    logs = findWeightsWithAbsReturns(user, env, seed=seed)
+    print(logs)
