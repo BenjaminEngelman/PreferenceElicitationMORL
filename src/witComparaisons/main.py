@@ -12,7 +12,7 @@ from numpy.random import RandomState
 from recordclass import recordclass
 
 from env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv, RewardWrapper
-from agents import QLearningAgent
+from agents import MOQlearning
 from solver import Solver
 from user import User
 
@@ -76,7 +76,7 @@ def get_returns_to_compare(returns, prefered_results, rejected_results, previous
 
 
 
-def findweights(solver, user, random_state):
+def findWeightsWithComparisons(user, agent, seed):
     """
     Starts by computing the reward for the policies associated to the 
     [1 0] and [0 1] weights
@@ -87,6 +87,12 @@ def findweights(solver, user, random_state):
         "returns": [],
         "weights": []
     }
+
+
+    logging.info("Hidden weights: " + str(user.hidden_weights) + "\n")
+
+    random_state = RandomState(seed)
+    solver = Solver()
 
     weights_history = []
     weights = np.array([1, 0])
@@ -109,7 +115,7 @@ def findweights(solver, user, random_state):
         logging.info("Current weights estimates :" + str(weights))
 
         # Q-learning
-        returns = solver.solve(weights)
+        returns = solver.solve(agent, weights)
         logging.info("Returns for current weights: " + str(returns))
 
         result = Result(weights, returns)
@@ -154,27 +160,8 @@ def findweights(solver, user, random_state):
     # Check expected solution for real weights
     real_sol = get_best_sol(user.hidden_weights)
     logging.info(f"Expected solution for hidden weights of the user was: {real_sol}")
-    return logs
-
-
-def findWeightsWithComparisons(user, env, seed=42):
-    random_state = RandomState(seed)
-
-    # Setup of the environment and agent
-    n_actions = env.nA
-    n_states = env.nS
-    agent = QLearningAgent(n_actions=n_actions, n_states=n_states,
-                           decay=0.999997, random_state=random_state)
-    # Used to train and evaluate the agent on the environements
-    solver = Solver(env, agent)
-
-    # Create a user that will return noisy comparisons
-    logging.info("Hidden weights: " + str(user.hidden_weights) + "\n")
-
-    logs = findweights(solver, user, random_state)
 
     return logs
-
 
 
 if __name__ == "__main__":
@@ -190,9 +177,12 @@ if __name__ == "__main__":
     #         logging.info(f"\n#### Seed: {seed} ####\n")
     #         main(method=1, noise=std_noise, seed=seed)
 
-    env = BountyfulSeaTreasureEnv()
     seed = 1
     rs = RandomState(seed)
+
+    env = BountyfulSeaTreasureEnv()
+    agent = MOQlearning(env, decay=0.999997, random_state=rs)
+
     user = User(num_objectives=2, std_noise=0.001, random_state=rs, weights=[0.25, 0.75])
-    logs = findWeightsWithComparisons(user, env, seed=seed)
+    logs = findWeightsWithComparisons(user, agent, seed=seed)
     print(logs)

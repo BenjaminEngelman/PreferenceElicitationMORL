@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 from numpy.random import RandomState
 
 from user import User
+from agents import MOQlearning, MODQN
 from constants import BST_MAX_TIME, BST_MAX_TREASURE
 from env import BountyfulSeaTreasureEnv
+from minecart.envs.minecart_env import MinecartDeterministicEnv
 from witComparaisons.main import findWeightsWithComparisons
 from withAbsReturns.main import findWeightsWithAbsReturns
 from ols.main import ols
@@ -28,7 +30,7 @@ def get_distances_from_optimal_returns(logged_returns, optimal_returns):
     return distances
 
 
-def compareMethods():
+def compareMethods(env_name):
     """
     Compare withComparaisons and withAbsReturns
     """
@@ -58,8 +60,15 @@ def compareMethods():
         weight_vector = np.array([weight, 1-weight])
         optimal_returns = WEIGHTS_LIST[weight]
 
+        if env_name == "bst":
+            env = BountyfulSeaTreasureEnv()
+            agent = MOQlearning(env)
+
+        elif env_name == "minecart":
+            env = MinecartDeterministicEnv()
+            agent = MODQN(env)
+
         random_state = RandomState(1)
-        env = BountyfulSeaTreasureEnv()
         user = User(
             num_objectives=2,
             std_noise=noise,
@@ -74,8 +83,7 @@ def compareMethods():
             logs_comps["returns"][2:], optimal_returns)
 
         # withAbsReturs
-        logs_abs = findWeightsWithAbsReturns(
-            user, env, seed=seed, method="opti")
+        logs_abs = findWeightsWithAbsReturns(user, agent, seed=seed, method="opti")
         distances_withAbsRet = get_distances_from_optimal_returns(
             logs_abs["returns"], optimal_returns)
 
@@ -89,7 +97,7 @@ def compareMethods():
         )
 
 
-def experimentNoise(method):
+def experimentNoise(method, env_name):
 
     WEIGHTS_LIST = {
         # Key = w0, value = optimal returns
@@ -128,8 +136,16 @@ def experimentNoise(method):
 
             for seed in range(nseed):
                 print(f"Seed: {seed}")
+                
+                if env_name == "bst":
+                    env = BountyfulSeaTreasureEnv()
+                    agent = MOQlearning(env)
+
+                elif env_name == "minecart":
+                    env = MinecartDeterministicEnv()
+                    agent = MODQN(env)
+
                 random_state = RandomState(seed)
-                env = BountyfulSeaTreasureEnv()
                 user = User(
                     num_objectives=2,
                     std_noise=noise,
@@ -138,9 +154,9 @@ def experimentNoise(method):
                 )
 
                 if method == "comparisons":
-                    logs = findWeightsWithComparisons(user, env, seed=seed)
+                    logs = findWeightsWithComparisons(user, agent, seed=seed)
                 elif  method == "absolute":
-                    logs = findWeightsWithAbsReturns(user, env, seed=seed)
+                    logs = findWeightsWithAbsReturns(user, agent, seed=seed)
                 else:
                     print("Incorrect method.")
                     exit()
@@ -182,7 +198,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--experiment', choices=('comp', 'noise'), help="The name of the experiment to run")
-    parser.add_argument('--method', choices=('comparisons', 'absolute', 'all') ,help="The name of the method")
+    parser.add_argument('--method', choices=('comparisons', 'absolute', 'all'), help="The name of the method")
+    parser.add_argumet('--env', choices=('dst, minecart'), "help the name of the environement to solve")
 
     args = parser.parse_args()
     if args.experiment == "noise" and args.method == None:
@@ -190,14 +207,14 @@ if __name__ == "__main__":
     
 
     if args.experiment == "comp":
-        compareMethods()
+        compareMethods(args.env)
     
     elif args.experiment == "noise":
         if args.method != "all":
-            experimentNoise(args.method)
+            experimentNoise(args.method, args.env)
         else:
-            experimentNoise("absolute")
-            experimentNoise("comparisons")
+            experimentNoise("absolute", args.env)
+            experimentNoise("comparisons", args.env)
     
         
 

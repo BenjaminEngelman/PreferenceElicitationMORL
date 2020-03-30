@@ -8,7 +8,7 @@ from numpy.random import RandomState
 import numpy as np
 
 from env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv, RewardWrapper
-from agents import QLearningAgent
+from agents import MOQlearning
 from solver import Solver
 from user import User
 
@@ -61,15 +61,12 @@ def estimateWeightsReg(X, y):
 
 
 
-def findWeightsWithAbsReturns(user, env, seed, method="opti"):
+def findWeightsWithAbsReturns(user, agent, seed, method="opti"):
     random_state = RandomState(seed)
 
     # Setup of the environment and agent
     n_obj = 2
-    n_actions = env.nA
-    n_states = env.nS
-    agent = QLearningAgent(n_actions=n_actions, n_states=n_states, decay=0.999997, random_state=random_state)
-    solver = Solver(env, agent) # Used to train and evaluate the agent on the environements
+    solver = Solver() # Used to train and evaluate the agent on the environements
     logs = {
         "returns": [],
         "weights": []
@@ -91,7 +88,7 @@ def findWeightsWithAbsReturns(user, env, seed, method="opti"):
         # Solve the environement for some random weights
         w0_to_solve = random_state.uniform(0, 1)
         w_to_solve = np.array([w0_to_solve, 1 - w0_to_solve])
-        returns = solver.solve(w_to_solve)
+        returns = solver.solve(agent, w_to_solve)
         # print("Returns for the weights " + str(w_solve) + ": " + str(returns))
         logs["weights"].append(weights[0])
         logs["returns"].append(solver.solve(weights)) # Log the returns for the current weight estimate
@@ -136,9 +133,14 @@ if __name__ == "__main__":
     logging.basicConfig(
         format='%(message)s', filename=f'logs/experiment_{ts}.log', level=logging.INFO)
 
-    env = BountyfulSeaTreasureEnv()
     seed = 1
     rs = RandomState(seed)
+
+    env = BountyfulSeaTreasureEnv()
+    agent = MOQlearning(env, decay=0.999997, random_state=rs)
+
+
     user = User(num_objectives=2, std_noise=0.001, random_state=rs, weights=[0.25, 0.75])
-    logs = findWeightsWithAbsReturns(user, env, seed=seed)
+    logs = findWeightsWithAbsReturns(user, agent, seed=seed)
     print(logs)
+
