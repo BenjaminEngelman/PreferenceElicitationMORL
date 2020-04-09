@@ -1,8 +1,8 @@
-import bayes_logistic as bl
+import src.bayes_logistic as bl
 import numpy as np
 import sys
-from constants import BST_MAX_TREASURE
-from utils import get_best_sol_BST
+from src.constants import BST_SOLUTIONS
+from src.utils import get_best_sol_BST
 
 sys.path.insert(0, '..')
 
@@ -30,7 +30,7 @@ class User(object):
             self.hidden_weights = self.random_state.uniform(0.0, 1, num_objectives)
             self.hidden_weights /= np.sum(self.hidden_weights)
         
-        self.max_utility = get_best_sol_BST(self.hidden_weights)
+        self.utilities = [self.hidden_weights[0] * sol[0] + self.hidden_weights[1] * sol[1] for sol in BST_SOLUTIONS]
 
     def get_utility(self, values, with_noise=True):
         noise = self.random_state.normal(0, self.std_noise)
@@ -38,7 +38,7 @@ class User(object):
         for i in range(self.num_objectives):
             utility += values[i] * self.hidden_weights[i]
 
-        utility /= self.max_utility
+        utility  = (utility - min(self.utilities)) / (max(self.utilities) - min(self.utilities))
         if with_noise:
             utility += noise
         return np.clip(utility, 0, 1)
@@ -66,8 +66,10 @@ class User(object):
         scalar_p2 = self.get_utility(p2.returns, with_noise=with_noise)
         res = scalar_p1 >= scalar_p2  # 1 if p1 > p2 else 0
         prefered, rejected = (p1, p2) if res else (p2, p1)
+        u_pref, u_rej = (scalar_p1, scalar_p2) if res else (scalar_p2, scalar_p1)
+
         self.save_comparison(p1.returns, p2.returns, res)
-        return prefered, rejected
+        return prefered, rejected, u_pref, u_rej
 
     def current_map(self, weights):
         if len(self.outcomes) > 0:

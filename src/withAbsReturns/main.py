@@ -7,10 +7,10 @@ import datetime
 from numpy.random import RandomState
 import numpy as np
 
-from env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv, RewardWrapper
-from agents import MOQlearning
-from solver import Solver
-from user import User
+from src.env import BountyfulSeaTreasureEnv
+from src.agents import MOQlearning
+from src.solver import Solver
+from src.user import User
 
 from scipy.optimize import minimize, lsq_linear
 import matplotlib.pyplot as plt
@@ -88,10 +88,11 @@ def findWeightsWithAbsReturns(user, agent, seed, method="opti"):
         # Solve the environement for some random weights
         w0_to_solve = random_state.uniform(0, 1)
         w_to_solve = np.array([w0_to_solve, 1 - w0_to_solve])
+        agent.reset()
         returns = solver.solve(agent, w_to_solve)
         # print("Returns for the weights " + str(w_solve) + ": " + str(returns))
-        logs["weights"].append(weights[0])
-        logs["returns"].append(solver.solve(weights)) # Log the returns for the current weight estimate
+        logs["weights"].append(weights[1])
+        logs["returns"].append(solver.solve(agent, weights)) # Log the returns for the current weight estimate
 
 
         # Get a noisy estimate of the user utility

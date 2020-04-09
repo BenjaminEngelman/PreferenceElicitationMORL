@@ -22,33 +22,27 @@ MIN_IMPROVEMENT = 0.1
 
 # A V_P contains: - the value of a policy (for each objective)
 #                 - the range for which in the current CCS
-V_P = recordclass("V_P", ["obj1", "obj2", "start", "end"])
+V_P = recordclass("V_P", ["obj1", "obj2", "obj3" "start_w0", "end_w0", "start_w1", "end_w1"])
 
-# A CornerWeight contains: - the value (w1) of the weight
+# A CornerWeight contains: - the value (w0, w1) of the 2 first weights
 #                          - its maximum possible improvement
 CornerWeight = recordclass("CornerWeight", ["val", "improvement"])
 
-Point = recordclass("Point", ["x", "y"])
+Point = recordclass("Point", ["x", "y", "z"])
 
 
-def scalarize(V_PI, w1):
-    w0 = 1 - w1
-    return w0 * V_PI.obj1 + w1 * V_PI.obj2
+def scalarize(V_PI, w0, w1):
+    w2 = 1 - w1 - w0
+    return w0 * V_PI.obj1 + w1 * V_PI.obj2 + w2 * V_PI.obj3
 
 
-def intersection(p1, p2, p3, p4):
-    """
-    Compute the intersection of the lines defined as
-    (p1, p2) and (p2, p3)
-    """
-    # print(p1, p2, p3, p4)
-    numX = (p1.x*p2.y-p1.y*p2.x)*(p3.x-p4.x)-(p1.x-p2.x)*(p3.x*p4.y-p3.y*p4.x)
-    numY = (p1.x*p2.y-p1.y*p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x*p4.y-p3.y*p4.x)
-    denum = (p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x)
-
-    px = numX / denum
-    py = numY / denum
-    return Point(round(px, 4), round(py, 4))
+def intersection(points):
+    p = np.array(points)
+    # r1*w1 + r2*w2 + r3*(1-w1-w2) = u. Unknowns: w1, w2, u
+    a = np.array((p[:,0]-p[:,2], p[:,1]-p[:,2], -np.ones(p.shape[0]))).T
+    b = -p[:,2]
+    x = np.linalg.solve(a, b)
+    return x
 
 
 def hasImprovement(w1, V_PI, S):
@@ -60,9 +54,7 @@ def hasImprovement(w1, V_PI, S):
         if V.start.x == w1.val:
             currentHeight = V.start.y
             break
-    x, y = intersection(
-        Point(w1.val, 0), Point(w1.val, currentHeight), Point(0, V_PI.obj1), Point(1, V_PI.obj2)
-    )
+    x, y = intersection(Point(w1.val, 0), Point(w1.val, currentHeight), Point(0, V_PI.obj1), Point(1, V_PI.obj2))
     if y > currentHeight:
         return True
     else:
@@ -94,7 +86,7 @@ def newCornerWeights(V_PI, S):
     cornerWeights = []
 
     for V in S:
-        cornerW, Y = intersection(V_PI.start, V_PI.end, V.start, V.end)
+        w0, w1, U = intersection(V_PI.start, V_PI.end, V.start, V.end)
         # If intersection is in the range of line (p1, p2) and (p3, p4)
         if not (cornerW > V_PI.end.x or cornerW < V_PI.start.x or cornerW > V.end.x or cornerW < V.start.x):
             if V_PI.obj1 > V.obj1:

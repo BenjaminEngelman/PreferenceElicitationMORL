@@ -15,9 +15,9 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
 
     metadata = {'render.modes': ['human', 'rgb_array']}
 
-    def __init__(self, width=10):
+    def __init__(self, width=12):
 
-        self.shape = (width+1, width)
+        self.shape = (width, width)
         self.start_state_index = 0
 
         nS = np.prod(self.shape)
@@ -121,130 +121,32 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
 
 class BountyfulSeaTreasureEnv(DeepSeaTreasureEnv):
 
-    def __init__(self, width=10):
-        # random treasure-depths for each x-pos
-        depths = np.random.choice(range(4), size=width-1, p=[.3, .5, .1, .1])
-        depths = [0, 0, 0, 1, 1, 1, 0, 1, 0]
-        # depths = np.array([0, 0, 1, 1, 2, 0, 0, 1, 1])
-        # add first treasure depth (always 1)
-        depths = np.append([1], depths)
-        depths = np.cumsum(depths)
-        # limit to grid
-        depths[depths > width] = width
-        self.depths = depths
+    def __init__(self, width=12):
         super(BountyfulSeaTreasureEnv, self).__init__(width=width)
 
     def _treasures(self):
 
         return {
-            (1, 0): 5,
-            (2, 1): 80,
-            (3, 2): 120,
-            (4, 3): 140,
-            (4, 4): 145,
-            (4, 5): 150,
-            (7, 6): 163,
-            (7, 7): 166,
-            (9, 8): 173,
-            (10, 9): 175
+            (2, 0): 18,
+            (2, 1): 26,
+            (2, 2): 31,
+            (4, 3): 44,
+            (4, 4): 48.2,
+            (5, 5): 56,
+            (8, 6): 72,
+            (8, 7): 76.3,
+            (10, 8): 90,
+            (11, 9): 100
         }
 
-        # pareto_front = lambda x: np.round(-45.64496 - (59.99308/-0.2756738)*(1 - np.exp(0.2756738*x)))
-        # treasures = {(d, i): pareto_front(-(i+d)) for i, d in enumerate(self.depths)}
-        # return treasures
-
-
-
-class OtherDeepSeaTreasure(object):
-
-    def __init__(self):
-        # the map of the deep sea treasure (convex version)
-        self.sea_map = np.array(
-            [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [-10, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [-10, -10, 120, 0, 0, 0, 0, 0, 0, 0, 0],
-             [-10, -10, -10, 140, 145, 150, 0, 0, 0, 0, 0],
-             [-10, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0],
-             [-10, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0],
-             [-10, -10, -10, -10, -10, -10, 163, 166, 0, 0, 0],
-             [-10, -10, -10, -10, -10, -10, -10, -10, 0, 0, 0],
-             [-10, -10, -10, -10, -10, -10, -10, -10, 173, 0, 0],
-             [-10, -10, -10, -10, -10, -10, -10, -10, -10, 175, 0]]
-        )
-
-        self.nS = np.prod(self.sea_map.shape)
-        self.nA = 4
-        # DON'T normalize
-        self.max_reward = 1.0
-
-        # state space specification: 2-dimensional discrete box
-        self.state_spec = [['discrete', 1, [0, 10]], ['discrete', 1, [0, 10]]]
-
-        # action space specification: 1 dimension, 0 up, 1 down, 2 left, 3 right
-        self.action_spec = ['discrete', 1, [0, 4]]
-
-        # reward specification: 2-dimensional reward
-        # 1st: treasure value || 2nd: time penalty
-        self.reward_spec = [[0, 14], [-1, 0]]
-
-        self.current_state = np.array([0, 0])
-        self.terminal = False
-
-    def get_map_value(self, pos):
-        return self.sea_map[pos[0]][pos[1]]
-
-    def reset(self):
-        '''
-            reset the location of the submarine
-        '''
-        self.current_state = np.array([0, 0])
-        self.terminal = False
-        return 0
-
-    def step(self, action):
-        '''
-            step one move and feed back reward
-        '''
-        dir = {
-            0: np.array([-1, 0]),  # up
-            1: np.array([1, 0]),  # down
-            2: np.array([0, -1]),  # left
-            3: np.array([0, 1])  # right
-        }[action]
-        next_state = self.current_state + dir
-
-        valid = lambda x, ind: (x[ind] >= self.state_spec[ind][2][0]) and (x[ind] <= self.state_spec[ind][2][1])
-
-        if valid(next_state, 0) and valid(next_state, 1):
-            if self.get_map_value(next_state) != -1:
-                self.current_state = next_state
-
-        treasure_value = self.get_map_value(self.current_state)
-        if treasure_value == 0 or treasure_value == -1:
-            treasure_value = 0.0
-        else:
-            treasure_value /= self.max_reward
-            self.terminal = True
-        time_penalty = -1.0 / self.max_reward
-        reward = np.array([treasure_value, time_penalty])
-
-        next_state = self.current_state[1] * 11 + self.current_state[0]
-        return next_state, reward, self.terminal, {}
-
-class RewardWrapper(gym.RewardWrapper):
-    def __init__(self, env):
-        super().__init__(env)
-        self.max_reward = 166
-    
-    def reward(self, rew):
-        return rew / self.max_reward
-
-
 if __name__ == '__main__':
+    
     import matplotlib.pyplot as plt
 
     env = BountyfulSeaTreasureEnv()
     # print(len(env._treasures()))
+    env.step(2)
+    # env.step(2)
+
     plt.imshow(env.render(mode="human"))
     plt.show()

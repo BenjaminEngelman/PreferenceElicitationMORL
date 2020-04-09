@@ -1,8 +1,9 @@
 import random
 import numpy as np
 import tensorflow as tf
+import cv2
 import matplotlib.pyplot as plt
-from utils import argmax
+from src.utils import argmax
 from stable_baselines import DQN
 from stable_baselines import logger
 from stable_baselines.common import tf_util, OffPolicyRLModel, SetVerbosity, TensorboardWriter
@@ -11,8 +12,8 @@ from stable_baselines.common.schedules import LinearSchedule
 from stable_baselines.common.buffers import ReplayBuffer, PrioritizedReplayBuffer
 from stable_baselines.deepq.build_graph import build_train
 from stable_baselines.deepq.policies import DQNPolicy, MlpPolicy, CnnPolicy
-from constants import BST_DIRECTIONS
-
+from src.constants import BST_DIRECTIONS, GAMMA_BST
+import sklearn
 
 class Agent():
     def __init__(self, env, decay, random_state):
@@ -25,7 +26,7 @@ class Agent():
         self.n_actions = env.nA
         self.epsilon = self.max_epsilon
         self.lr = 0.1
-        self.gamma = 0.99
+        self.gamma = GAMMA_BST
 
     def epsilonGreedy(self, q_values):
         a = argmax(q_values)
@@ -39,6 +40,8 @@ class Agent():
     
     def reset(self):
         raise NotImplementedError()   
+
+
 
 class MOQlearning(Agent):
     
@@ -99,7 +102,7 @@ class MOQlearning(Agent):
         """
         Reset the Qtable and the epsilon
         """
-        self.qtable = [np.array([0.]*self.n_actions) for state in range(self.n_states)]
+        self.qtable = [np.random.uniform(-1, 175, self.n_actions) for state in range(self.n_states)]
         self.epsilon = self.max_epsilon
     
     def update(self, s, a, r, n_s, d):
@@ -143,12 +146,12 @@ class MOQlearning(Agent):
 
 
     def show_qtable(self):
-        table = np.chararray((11, 10))
+        table = np.chararray((12, 12))
         for i in range(self.n_states):
             if (max(self.qtable[i])) != 0:
-                table[i // 10, i % 10] = BST_DIRECTIONS[argmax(self.qtable[i])]
+                table[i // 12, i % 12] = BST_DIRECTIONS[argmax(self.qtable[i])]
             else:
-                table[i // 10, i % 10] = "N"
+                table[i // 12, i % 12] = "N"
         print(table)
         print(self.epsilon)
 
@@ -160,36 +163,50 @@ class MODQN(DQN):
     """
     def __init__(self, env):
         super(MODQN, self).__init__(
-            CnnPolicy,
+            MlpPolicy,
             env,
             tensorboard_log="./tensorboard/",
-            batch_size=64,
+            # batch_size=64,
             gamma=0.98,
+            # buffer_size=100000,
+            # exploration_final_eps=0.05,
+            # prioritized_replay_eps=0.01,
             verbose=1,
-            buffer_size=100000,
-            exploration_final_eps=0.01,
-            prioritized_replay_eps=0.01,
-            prioritized_replay_alpha=2.0
+            full_tensorboard_log=True
+
         )
+        self.scaler = self.train_obs_scaler()
     
+    def train_obs_scaler(self):
+        print("TRAINING SCALER")
+        observation_examples = np.array([self.env.observation_space.sample() for _ in range(100000)])
+        scaler = sklearn.preprocessing.StandardScaler()
+        scaler.fit(observation_examples.squeeze())
+        return scaler
+    
+    def scale_state(self, state):
+        return self.scaler.transform(state.reshape(1, -1))[0]
+
     def demonstrate(self):
         state = self.env.reset()
         terminate = False
         step = 0
-        while not terminate or step < 500:
+        while not terminate or step < 1000:
             plt.imshow(self.env.render())
-            plt.show()
+            plt.savefig(f"../demonstration/{step}.png")
+            
             action, _ = self.predict(state)
             state, _, terminate, _ = self.env.step(action)
             step += 1
         self.env.render()
         
     
-    def learn(self, total_timesteps, obj_weights, callback=None, log_interval=100, tb_log_name="DQN",
+    def learn(self, total_timesteps, obj_weights, callback=None, log_interval=1, tb_log_name="DQN",
               reset_num_timesteps=True, replay_wrapper=None):
 
         new_tb_log = self._init_num_timesteps(reset_num_timesteps)
         callback = self._init_callback(callback)
+
 
         with SetVerbosity(self.verbose), TensorboardWriter(self.graph, self.tensorboard_log, tb_log_name, new_tb_log) \
                 as writer:
@@ -226,10 +243,14 @@ class MODQN(DQN):
 
             reset = True
             obs = self.env.reset()
+            obs = self.scale_state(obs)
             # Retrieve unnormalized observation for saving into the buffer
             if self._vec_normalize_env is not None:
                 obs_ = self._vec_normalize_env.get_original_obs().squeeze()
 
+            action_counts = [0]*6
+
+            ep_step_counter = 0
             for timestep in range(total_timesteps):
 
                 # Take action and update exploration to the newest value
@@ -252,8 +273,10 @@ class MODQN(DQN):
                 with self.sess.as_default():
                     action = self.act(np.array(obs)[None], update_eps=update_eps, **kwargs)[0]
                 env_action = action
+                action_counts[env_action] += 1
                 reset = False
                 new_obs, rew, done, info = self.env.step(env_action)
+                new_obs = self.scale_state(new_obs)
 
                 # IMPORTANT FOR MULTI-OBJECTCTIVES ENVIRONEMENT
                 rew = obj_weights.dot(rew)
@@ -285,14 +308,16 @@ class MODQN(DQN):
                                                         self.num_timesteps)
 
                 episode_rewards[-1] += reward_
-                if done:
+                if done or ep_step_counter == 1000:
                     maybe_is_success = info.get('is_success')
                     if maybe_is_success is not None:
                         episode_successes.append(float(maybe_is_success))
                     if not isinstance(self.env, VecEnv):
                         obs = self.env.reset()
+                        obs = self.scale_state(obs)
                     episode_rewards.append(0.0)
                     reset = True
+                    ep_step_counter = 0
 
                 # Do not train if the warmup phase is not over
                 # or if there are not enough samples in the replay buffer
@@ -360,7 +385,16 @@ class MODQN(DQN):
                     logger.record_tabular("mean 100 episode reward", mean_100ep_reward)
                     logger.record_tabular("% time spent exploring",
                                             int(100 * self.exploration.value(self.num_timesteps)))
+                    logger.record_tabular("actions count", action_counts)
                     logger.dump_tabular()
+                if done:
+                    action_counts = [0]*6
+                
+                if len(episode_rewards) % 10 == 0:
+                    self.save(f"../saved_agents/{obj_weights}_{len(episode_rewards)}")
+                
+                ep_step_counter += 1
+                
 
         callback.on_training_end()
         return self
@@ -369,7 +403,7 @@ if __name__ == "__main__":
     from minecart.envs.minecart_env import MinecartDeterministicEnv
 
     env = MinecartDeterministicEnv()
-    weights = np.array([0.2, 0.6, 0.2])
+    weights = np.array([0.99, 0.0, 0.01])
     s = env.reset()
     agent = MODQN(env)
     agent.learn(10000, weights)

@@ -2,16 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numpy.random import RandomState
 
-from user import User
-from agents import MOQlearning, MODQN
-from constants import BST_MAX_TIME, BST_MAX_TREASURE
-from env import BountyfulSeaTreasureEnv
+from src.user import User
+from src.agents import MOQlearning, MODQN
+from src.constants import BST_MAX_TIME, BST_MAX_TREASURE
+from src.env import BountyfulSeaTreasureEnv
 from minecart.envs.minecart_env import MinecartDeterministicEnv
-from witComparaisons.main import findWeightsWithComparisons
-from withAbsReturns.main import findWeightsWithAbsReturns
-from ols.main import ols
-from utils import plot_compareMethods, plot_experimentNoise, computeFromNestedLists
-
+from src.withComparisons.main import findWeightsWithComparisons
+from src.withAbsReturns.main import findWeightsWithAbsReturns
+# from ols.main import ols
+from src.utils import plot_compareMethods, plot_experimentNoise, computeFromNestedLists
+from src.utils import get_best_sol_BST
 
 
 def get_distances_from_optimal_returns(logged_returns, optimal_returns):
@@ -36,39 +36,41 @@ def compareMethods(env_name):
     """
 
     # For each of those weights the optimal return is different
-    # We only consider w0 as w1 = 1 - w0
-    WEIGHTS_LIST = {
-        # Key = w0, value = optimal returns
-        0.0: [5, -1],
-        0.04: [80, -3],
-        0.07: [120, -5],
-        0.15: [140, -7],
-        0.22: [150, -9],
-        0.25: [163, -13],
-        0.28: [166, -14],
-        0.45: [173, -17],
-    }
+    # We only consider w1 as w0 = 1 - w1
+    WEIGHTS_LIST = [
+        0.0,
+        0.9,
+        0.66,
+        0.8,
+        0.5,
+        0.75,
+        0.30,
+        0.38,
+        0.60,
+        0.18
+    ]
+
 
     noise = 0.001
     seed = 1
-
+    random_state = RandomState(1)
+    
     for weight in WEIGHTS_LIST:
         print("---------")
         print(f"Weight = {weight}")
         print("---------")
 
-        weight_vector = np.array([weight, 1-weight])
-        optimal_returns = WEIGHTS_LIST[weight]
+        weight_vector = np.array([1-weight, weight])
+        optimal_returns = get_best_sol_BST(weight_vector)
 
         if env_name == "bst":
             env = BountyfulSeaTreasureEnv()
-            agent = MOQlearning(env)
+            agent = MOQlearning(env, random_state=random_state)
 
         elif env_name == "minecart":
             env = MinecartDeterministicEnv()
             agent = MODQN(env)
 
-        random_state = RandomState(1)
         user = User(
             num_objectives=2,
             std_noise=noise,
@@ -77,7 +79,7 @@ def compareMethods(env_name):
         )
 
         # WithComparaisons
-        logs_comps = findWeightsWithComparisons(user, env, seed=seed)
+        logs_comps = findWeightsWithComparisons(user, agent, seed=seed)
         # [2:] because first 2 returns are fixed to get first comparaisons
         distances_withComp = get_distances_from_optimal_returns(
             logs_comps["returns"][2:], optimal_returns)
@@ -99,17 +101,11 @@ def compareMethods(env_name):
 
 def experimentNoise(method, env_name):
 
-    WEIGHTS_LIST = {
-        # Key = w0, value = optimal returns
-        # 0.0: [5, -1],
-        # 0.04: [80, -3],
-        0.07: [120, -5],
-        # 0.15: [140, -7],
-        # 0.22: [150, -9],
-        # 0.25: [163, -13],
-        0.28: [166, -14],
-        # 0.45: [173, -17],
-    }
+    WEIGHTS_LIST = [
+        0.0,
+        0.5,
+        0.9
+    ]
 
     nseed = 10
 
@@ -123,8 +119,8 @@ def experimentNoise(method, env_name):
         print(f"Weight = {weight}")
         print("---------")
 
-        weight_vector = np.array([weight, 1-weight])
-        optimal_returns = WEIGHTS_LIST[weight]
+        weight_vector = np.array([1-weight, weight])
+        optimal_returns = get_best_sol_BST(weight_vector)
 
         mean_distances, std_distances = [], []
         mean_weightEstimates, std_weightEstimates = [], []
@@ -135,17 +131,18 @@ def experimentNoise(method, env_name):
             all_seed_weightEstimates = []
 
             for seed in range(nseed):
+                random_state = RandomState(seed)
+
                 print(f"Seed: {seed}")
                 
                 if env_name == "bst":
                     env = BountyfulSeaTreasureEnv()
-                    agent = MOQlearning(env)
+                    agent = MOQlearning(env, random_state=random_state)
 
                 elif env_name == "minecart":
                     env = MinecartDeterministicEnv()
                     agent = MODQN(env)
 
-                random_state = RandomState(seed)
                 user = User(
                     num_objectives=2,
                     std_noise=noise,
@@ -199,7 +196,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--experiment', choices=('comp', 'noise'), help="The name of the experiment to run")
     parser.add_argument('--method', choices=('comparisons', 'absolute', 'all'), help="The name of the method")
-    parser.add_argumet('--env', choices=('dst, minecart'), "help the name of the environement to solve")
+    parser.add_argument('--env', choices=('bst', 'minecart'), help="help the name of the environement to solve")
 
     args = parser.parse_args()
     if args.experiment == "noise" and args.method == None:
