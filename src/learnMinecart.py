@@ -10,6 +10,8 @@ from stable_baselines import PPO2, A2C, DQN
 from stable_baselines.common import make_vec_env
 from gym.wrappers import TimeLimit
 from stable_baselines.common.vec_env import DummyVecEnv
+from stable_baselines.common.callbacks import CheckpointCallback
+
 
 
 if __name__ == "__main__":
@@ -67,5 +69,6 @@ if __name__ == "__main__":
         print("Wrong method")
         exit()
 
-    model.learn(total_timesteps=int(5e7))
-    model.save(f"{sys.argv[1]}_minecart")
+    checkpoint_callback = CheckpointCallback(save_freq=500000, save_path='./checkpoints', name_prefix=f'{sys.argv[1]}_minecart')
+    model.learn(total_timesteps=int(5e7), callback=checkpoint_callback)
+    model.save(f"{sys.argv[1]}_minecart_final")

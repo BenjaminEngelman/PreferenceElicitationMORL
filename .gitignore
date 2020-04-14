@@ -16,3 +16,6 @@ gp_pref_elicit/
 PreferenceElicitation.jl
 experiments/
 minecart/
+
+# saved agents
+*.zip
