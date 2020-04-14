@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, '..')
-
 from time import time
 import logging
 import datetime
@@ -8,7 +5,7 @@ from numpy.random import RandomState
 import numpy as np
 
 from src.env import BountyfulSeaTreasureEnv
-from src.agents import MOQlearning
+from src.agents import Qlearning
 from src.solver import Solver
 from src.user import User
 
@@ -61,7 +58,7 @@ def estimateWeightsReg(X, y):
 
 
 
-def findWeightsWithAbsReturns(user, agent, seed, method="opti"):
+def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
     random_state = RandomState(seed)
 
     # Setup of the environment and agent
@@ -83,16 +80,18 @@ def findWeightsWithAbsReturns(user, agent, seed, method="opti"):
 
     it = 0
     while it < 6:# or not (np.abs(prev_weights - weights)<epsilon).all():
-        # print("Iteration %d" % it)
-        # print("Current weights estimates: " + str(weights))
+        logging.info("Iteration %d" % it)
+        logging.info("Current weights estimates: " + str(weights))
+
         # Solve the environement for some random weights
-        w0_to_solve = random_state.uniform(0, 1)
-        w_to_solve = np.array([w0_to_solve, 1 - w0_to_solve])
-        agent.reset()
-        returns = solver.solve(agent, w_to_solve)
-        # print("Returns for the weights " + str(w_solve) + ": " + str(returns))
+        w1_to_solve = random_state.uniform(0, 1)
+        w_to_solve = np.array([w1_to_solve, 1 - w1_to_solve])
+        returns = solver.solve(env_name, w_to_solve, random_state=random_state)
+        logging.info("Returns for the weights " + str(w1_to_solve) + ": " + str(returns))
+
         logs["weights"].append(weights[1])
-        logs["returns"].append(solver.solve(agent, weights)) # Log the returns for the current weight estimate
+        # Solve the env for the current weight estimate and add to logs
+        logs["returns"].append(solver.solve(env_name, weights, random_state=random_state)) # Log the returns for the current weight estimate
 
 
         # Get a noisy estimate of the user utility
@@ -132,16 +131,11 @@ def findWeightsWithAbsReturns(user, agent, seed, method="opti"):
 if __name__ == "__main__":
     ts = datetime.datetime.now().timestamp()
     logging.basicConfig(
-        format='%(message)s', filename=f'logs/experiment_{ts}.log', level=logging.INFO)
+        format='%(message)s', filename=f'src/withAbsReturns/logs/experiment_{ts}.log', level=logging.INFO)
 
     seed = 1
     rs = RandomState(seed)
-
-    env = BountyfulSeaTreasureEnv()
-    agent = MOQlearning(env, decay=0.999997, random_state=rs)
-
-
-    user = User(num_objectives=2, std_noise=0.001, random_state=rs, weights=[0.25, 0.75])
-    logs = findWeightsWithAbsReturns(user, agent, seed=seed)
+    user = User(num_objectives=2, std_noise=0.001, random_state=rs, weights=[0.9, 0.1])
+    logs = findWeightsWithAbsReturns(user, env_name="bst", seed=seed)
     print(logs)
 

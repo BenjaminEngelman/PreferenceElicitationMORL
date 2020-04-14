@@ -1,21 +1,21 @@
 # import sys
 # sys.path.insert(0, '..')
 
-from src.utils import plot_ccs, plot_ccs_2
-from src.env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
-from src.agents import QLearningAgent
-from src.solver import Solver
+from src.utils import get_best_sol, create_3D_pareto_front
 from recordclass import recordclass
 from time import time
 import numpy as np
 import queue
 import math
+from mpl_toolkits import mplot3d
+import matplotlib.pyplot as plt
+import matplotlib.tri as tri
+from itertools import combinations 
 
 
 
 ##########################################
 # TODO :
-
 ##########################################
 
 MIN_IMPROVEMENT = 0.1
@@ -26,10 +26,17 @@ V_P = recordclass("V_P", ["obj1", "obj2", "obj3" "start_w0", "end_w0", "start_w1
 
 # A CornerWeight contains: - the value (w0, w1) of the 2 first weights
 #                          - its maximum possible improvement
-CornerWeight = recordclass("CornerWeight", ["val", "improvement"])
+CornerWeight = recordclass("CornerWeight", ["w0", "w1", "improvement"])
 
 Point = recordclass("Point", ["x", "y", "z"])
 
+def triangle_for_point(r):
+    r = np.array(r)
+    w = np.identity(len(r)).T
+    u = np.inner(w,r)
+
+    triang = tri.Triangulation(w[:,0], w[:,1], triangles=np.arange(3)[None,:])
+    return triang, u
 
 def scalarize(V_PI, w0, w1):
     w2 = 1 - w1 - w0
@@ -85,22 +92,42 @@ def newCornerWeights(V_PI, S):
     """
     cornerWeights = []
 
-    for V in S:
-        w0, w1, U = intersection(V_PI.start, V_PI.end, V.start, V.end)
-        # If intersection is in the range of line (p1, p2) and (p3, p4)
-        if not (cornerW > V_PI.end.x or cornerW < V_PI.start.x or cornerW > V.end.x or cornerW < V.start.x):
-            if V_PI.obj1 > V.obj1:
-                V.start.x = cornerW
-                V.start.y = Y
-                V_PI.end.x = cornerW
-                V_PI.end.y = Y
-            else:
-                V.end.x = cornerW
-                V.end.y = Y
-                V_PI.start.x = cornerW
-                V_PI.start.y = Y
+    if len(S) < 2:
+        return cornerWeights
+    combs = combinations(S, 2) 
 
-            cornerWeights.append(CornerWeight(val=cornerW, improvement=None))
+    for comb in combs:
+        print(comb)
+        w0, w1, U = intersection([comb[0], comb[1], V_PI])
+        print(f"INTERSECTION: {[w0, w1, U]}")
+
+        fig = plt.figure()
+        plt.gca().set_aspect('equal')
+        ax = plt.axes(projection='3d')
+        for p in [comb[0], comb[1], V_PI]:
+            triang, u = triangle_for_point(p)
+            ax.plot_trisurf(triang, u, alpha=0.4)
+        ax.scatter([w0], [w1], [U], c='orange', s=70,)
+        ax.text(w0, w1, U, 'intersection')
+
+        plt.show()
+
+    # for V in S:
+        # print([w0, w1, U])
+        # # If intersection is in the range of line (p1, p2) and (p3, p4)
+        # if not (cornerW > V_PI.end.x or cornerW < V_PI.start.x or cornerW > V.end.x or cornerW < V.start.x):
+        #     if V_PI.obj1 > V.obj1:
+        #         V.start.x = cornerW
+        #         V.start.y = Y
+        #         V_PI.end.x = cornerW
+        #         V_PI.end.y = Y
+        #     else:
+        #         V.end.x = cornerW
+        #         V.end.y = Y
+        #         V_PI.start.x = cornerW
+        #         V_PI.start.y = Y
+
+        #     cornerWeights.append(CornerWeight(val=cornerW, improvement=None))
 
     return cornerWeights
 
@@ -121,11 +148,9 @@ def estimateImprovement(cornerWeight, S):
     return height - cornerPoint.y
 
 
-def ols(env, agent):
+def ols():
+    pareto_front = create_3D_pareto_front(size=30, seed=0)
     start = time()
-
-
-    solver = Solver(env, agent)
 
     S = []  # Partial CCS
     W = []  # Visited weights
@@ -133,8 +158,10 @@ def ols(env, agent):
 
     # Add the two extremum values for the weights in the Queue
     # With infinite priority
-    Q.put((-math.inf, CornerWeight(val=0.0, improvement=-math.inf)))
-    Q.put((-math.inf, CornerWeight(val=1.0, improvement=-math.inf)))
+    Q.put((-math.inf, CornerWeight(w0=1.0, w1=0.0, improvement=-math.inf)))
+    Q.put((-math.inf, CornerWeight(w0=0.0, w1=1.0, improvement=-math.inf)))
+    Q.put((-math.inf, CornerWeight(w0=0.0, w1=0.0, improvement=-math.inf)))
+
 
     num_iter = 0
     while not Q.empty():
@@ -142,42 +169,50 @@ def ols(env, agent):
         print(Q.queue)
         # Get corner weight from Queue
         weight = Q.get()
-        w1 = weight[1]
-        W.append(w1.val)
+        w_values = weight[1] # weights[0] is the priority, [1] is the cornerweight obj
 
         # Call solver with this weight
-        w = np.array([1 - w1.val, w1.val])
+        w = np.array([w_values.w0, w_values.w1, 1 - w_values.w0 - w_values.w1])
         print("Solving for weights: ", w)
-        obj1, obj2 = solver.solve(w)
+        obj1, obj2, obj3 = get_best_sol(pareto_front, w)
+        V_PI = [obj1, obj2, obj3]
         # Get V_PI from solver
-        V_PI = V_P(obj1=obj1, obj2=obj2, start=Point(
-            x=0.0, y=obj1), end=Point(x=1.0, y=obj2))
-        print(V_PI)
+        print(f"RETURNS : {V_PI}")
 
-        W.append(w1.val)
-        print(f"W1: {w1}\nV_PI: {V_PI}\nS: {S}")
-        if V_PI not in S and hasImprovement(w1, V_PI, S):
+        if V_PI not in S: #and hasImprovement(w_values, V_PI, S):
             # Remove obseletes Vs from S
-            removeObseleteValueVectors(V_PI, S)
+            # removeObseleteValueVectors(V_PI, S)
 
-            # plot CSS + New value vector
-            plot_ccs_2(S + [V_PI])
+            # # PLOT
+            # fig = plt.figure()
+            # plt.gca().set_aspect('equal')
+            # ax = plt.axes(projection='3d')
+            # for V in S + [V_PI]:
+            #     triang, u = triangle_for_point(np.array(V))
+            #     ax.plot_trisurf(triang, u, alpha=0.4)
+            # ax.set_xlabel('w0')
+            # ax.set_ylabel('w1')
+            # ax.set_zlabel('u')
+            # plt.show()
+
 
             # Find new cornerweights
             W_V_PI = newCornerWeights(V_PI, S)
             
             S.append(V_PI)
-            removeObseleteWeights(Q, V_PI.start.x, V_PI.end.x)
-            for cornerWeight in W_V_PI:
-                cornerWeight.improvement = estimateImprovement(
-                    cornerWeight.val, S)
-                if cornerWeight.improvement > MIN_IMPROVEMENT and cornerWeight.val not in W:
-                    # priority = -improvement because high priority = small number
-                    Q.put((-cornerWeight.improvement, cornerWeight))
+            # removeObseleteWeights(Q, V_PI.start.x, V_PI.end.x)
+            # for cornerWeight in W_V_PI:
+            #     cornerWeight.improvement = estimateImprovement(
+            #         cornerWeight.val, S)
+            #     if cornerWeight.improvement > MIN_IMPROVEMENT and cornerWeight.val not in W:
+            #         # priority = -improvement because high priority = small number
+            #         Q.put((-cornerWeight.improvement, cornerWeight))
 
         num_iter += 1
 
     total_time = time() - start
     print("Number of iterations: %d" % num_iter)
     print("Time (s): %.2f" % total_time)
-    plot_ccs_2(S)
+
+if __name__ == "__main__":
+    ols()

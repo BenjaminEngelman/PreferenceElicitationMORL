@@ -3,10 +3,7 @@ import matplotlib.pyplot as plt
 from numpy.random import RandomState
 
 from src.user import User
-from src.agents import MOQlearning, MODQN
 from src.constants import BST_MAX_TIME, BST_MAX_TREASURE
-from src.env import BountyfulSeaTreasureEnv
-from minecart.envs.minecart_env import MinecartDeterministicEnv
 from src.withComparisons.main import findWeightsWithComparisons
 from src.withAbsReturns.main import findWeightsWithAbsReturns
 # from ols.main import ols
@@ -63,14 +60,6 @@ def compareMethods(env_name):
         weight_vector = np.array([1-weight, weight])
         optimal_returns = get_best_sol_BST(weight_vector)
 
-        if env_name == "bst":
-            env = BountyfulSeaTreasureEnv()
-            agent = MOQlearning(env, random_state=random_state)
-
-        elif env_name == "minecart":
-            env = MinecartDeterministicEnv()
-            agent = MODQN(env)
-
         user = User(
             num_objectives=2,
             std_noise=noise,
@@ -79,13 +68,13 @@ def compareMethods(env_name):
         )
 
         # WithComparaisons
-        logs_comps = findWeightsWithComparisons(user, agent, seed=seed)
+        logs_comps = findWeightsWithComparisons(user, env_name, seed=seed)
         # [2:] because first 2 returns are fixed to get first comparaisons
         distances_withComp = get_distances_from_optimal_returns(
             logs_comps["returns"][2:], optimal_returns)
 
         # withAbsReturs
-        logs_abs = findWeightsWithAbsReturns(user, agent, seed=seed, method="opti")
+        logs_abs = findWeightsWithAbsReturns(user, env_name, seed=seed, method="opti")
         distances_withAbsRet = get_distances_from_optimal_returns(
             logs_abs["returns"], optimal_returns)
 
@@ -135,14 +124,6 @@ def experimentNoise(method, env_name):
 
                 print(f"Seed: {seed}")
                 
-                if env_name == "bst":
-                    env = BountyfulSeaTreasureEnv()
-                    agent = MOQlearning(env, random_state=random_state)
-
-                elif env_name == "minecart":
-                    env = MinecartDeterministicEnv()
-                    agent = MODQN(env)
-
                 user = User(
                     num_objectives=2,
                     std_noise=noise,
@@ -151,9 +132,9 @@ def experimentNoise(method, env_name):
                 )
 
                 if method == "comparisons":
-                    logs = findWeightsWithComparisons(user, agent, seed=seed)
+                    logs = findWeightsWithComparisons(user, env_name, seed=seed)
                 elif  method == "absolute":
-                    logs = findWeightsWithAbsReturns(user, agent, seed=seed)
+                    logs = findWeightsWithAbsReturns(user, env_name, seed=seed)
                 else:
                     print("Incorrect method.")
                     exit()
@@ -194,7 +175,7 @@ if __name__ == "__main__":
 
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--experiment', choices=('comp', 'noise'), help="The name of the experiment to run")
+    parser.add_argument('--experiment', choices=('comp', 'noise', 'all'), help="The name of the experiment to run")
     parser.add_argument('--method', choices=('comparisons', 'absolute', 'all'), help="The name of the method")
     parser.add_argument('--env', choices=('bst', 'minecart'), help="help the name of the environement to solve")
 
@@ -212,6 +193,12 @@ if __name__ == "__main__":
         else:
             experimentNoise("absolute", args.env)
             experimentNoise("comparisons", args.env)
+    
+    else:
+        compareMethods(args.env)
+        experimentNoise("absolute", args.env)
+        experimentNoise("comparisons", args.env)
+
     
         
 

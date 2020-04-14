@@ -12,7 +12,7 @@ from numpy.random import RandomState
 from recordclass import recordclass
 
 from src.env import BountyfulSeaTreasureEnv
-from src.agents import MOQlearning
+from src.agents import Qlearning
 from src.solver import Solver
 from src.utils import get_best_sol_BST
 from src.user import User
@@ -75,7 +75,7 @@ def get_returns_to_compare(returns, prefered_results, rejected_results, previous
 
 
 
-def findWeightsWithComparisons(user, agent, seed):
+def findWeightsWithComparisons(user, env_name, seed):
     """
     Starts by computing the reward for the policies associated to the 
     [1 0] and [0 1] weights
@@ -119,8 +119,7 @@ def findWeightsWithComparisons(user, agent, seed):
         logging.info("Current weights estimates :" + str(weights))
 
         # Q-learning
-        agent.reset()
-        returns = solver.solve(agent, weights)
+        returns = solver.solve(env_name, weights, random_state=random_state)
         logging.info("Returns for current weights: " + str(returns))
 
         result = Result(weights, returns)
@@ -183,10 +182,6 @@ if __name__ == "__main__":
 
     seed = 1
     rs = RandomState(seed)
-
-    env = BountyfulSeaTreasureEnv()
-    agent = MOQlearning(env, decay=0.999997, random_state=rs)
-
     user = User(num_objectives=2, std_noise=0.000, random_state=rs, weights=[1, 0.0])
-    logs = findWeightsWithComparisons(user, agent, seed=seed)
+    logs = findWeightsWithComparisons(user, env_name="bst", seed=seed)
     print(logs)

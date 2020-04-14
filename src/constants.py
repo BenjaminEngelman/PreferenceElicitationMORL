@@ -32,11 +32,8 @@ BST_SOLUTIONS = [
     [100 * GAMMA_BST**19, sum([-1 * GAMMA_BST**i for i in range(19)])],
 ]
 
-
 BST_DIRECTIONS = ["U", "R", "D", "L"]
-
-
 
 # Learning constants
 STEPS_BST = 110000
-STEPS_MINECART = 500000
+STEPS_MINECART = 50000000

@@ -1,9 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy as np
+from numpy.random import RandomState
+from matplotlib import pyplot as plt
+from mpl_toolkits.mplot3d import axes3d
+import gym
+from gym import spaces
+from stable_baselines.common.policies import FeedForwardPolicy, register_policy
 from src.constants import BST_SOLUTIONS
 
-from stable_baselines.common.policies import FeedForwardPolicy, register_policy
-import gym
 
 # Custom MLP policy of three layers of size 20 each
 class CustomPolicy(FeedForwardPolicy):
@@ -13,6 +18,12 @@ class CustomPolicy(FeedForwardPolicy):
                                                           vf=[20, 20, 20])],
                                            feature_extraction="mlp")
 
+class MinecartObsWrapper(gym.ObservationWrapper):
+    def observation(self, s):
+        state = np.append(s['position'], [s['speed'], s['orientation'], *s['content']])
+        return state
+
+
 class MultiObjRewardWrapper(gym.RewardWrapper):
     """
     Transform a multi-ojective reward (= array)
@@ -21,22 +32,11 @@ class MultiObjRewardWrapper(gym.RewardWrapper):
     def __init__(self, env, weights):
         super().__init__(env)
         self.weights = weights
+        self.action_space = spaces.Discrete(6)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
 
     def reward(self, rew):
         return self.weights.dot(rew)
-
-def get_best_sol_BST(weights):
-    utility = lambda x: weights[0] * x[0] + weights[1] * x[1]
-
-    best_u = -1000
-    best_sol = 0
-
-    for sol in BST_SOLUTIONS:
-        if utility(sol) > best_u:
-            best_u = utility(sol)
-            best_sol = sol
-
-    return best_sol
 
 def computeFromNestedLists(nested_vals, op):
     """
@@ -96,7 +96,7 @@ def plot_ccs_2(S):
     ax[1].set_xlabel("Treasure")
     ax[1].set_ylabel("Time")
 
-    f.savefig(f"figures/ols_2.png")
+    f.savefig(f"figures/ols_10.png")
 
 
 def plot_compareMethods(distances_withComp, distances_withAbsRet, weights_withComp, weights_withAbsRet, optimal_weight, noise):
@@ -150,3 +150,53 @@ def plot_experimentNoise(all_distances, std_distances, all_weightsEstimates, std
 
     # axes[0].title(f"Noise experiment - Weight = {weight_vector} - {method} method")
 
+
+def sample_point_on_positive_sphere(random_state):
+    """
+    Sample a point on the positive part of sphere
+    ((x, y, z) are all positives)
+    """
+    ndim = 3
+    vec = random_state.randn(ndim)
+    vec /= np.linalg.norm(vec, axis=0)
+    while not (vec>0).all():
+        vec = random_state.randn(ndim)
+        vec /= np.linalg.norm(vec, axis=0)
+    return vec
+
+def create_3D_pareto_front(size=100, seed=42, plot=False):
+    random_state = RandomState(seed)
+
+    pareto_front = []
+    xs = []
+    ys = []
+    zs = []
+
+    for _ in range(size):
+        x, y, z = sample_point_on_positive_sphere(random_state=random_state)
+        pareto_front.append([x, y, z])
+        xs.append(x)
+        ys.append(y)
+        zs.append(z)
+
+    if plot:
+        fig, ax = plt.subplots(1, 1, subplot_kw={'projection':'3d'})
+        ax.scatter(xs, ys, zs, s=100, c='r', zorder=10)
+        fig.show()
+    
+    return pareto_front
+
+def get_best_sol(pareto_front, weights):
+    utility = lambda x: weights[0] * x[0] + weights[1] * x[1]
+    best_u = -np.inf
+    best_sol = 0
+
+    for sol in pareto_front:
+        if utility(sol) > best_u:
+            best_u = utility(sol)
+            best_sol = sol
+
+    return best_sol
+
+def get_best_sol_BST(weights):
+    return get_best_sol(BST_SOLUTIONS, weights)

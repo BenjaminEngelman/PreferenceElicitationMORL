@@ -91,7 +91,7 @@ def newCornerWeights(V_PI, S):
     between V_PI with all the Vs in the Partial CCS (S)
     """
     cornerWeights = []
-
+    
     for V in S:
         cornerW, Y = intersection(V_PI.start, V_PI.end, V.start, V.end)
         # If intersection is in the range of line (p1, p2) and (p3, p4)
@@ -128,7 +128,7 @@ def estimateImprovement(cornerWeight, S):
     return height - cornerPoint.y
 
 
-def ols(env, random_state):
+def ols(env_name, random_state):
     start = time()
     solver = Solver()
 
@@ -154,12 +154,7 @@ def ols(env, random_state):
         # Call solver with this weight
         w = np.array([1-w1.val,  w1.val])
         print("Solving for weights: ", w)
-        agent = MOQlearning(
-            env,
-            decay=0.999997,
-            random_state=random_state
-    )
-        obj1, obj2 = solver.solve(agent, w)
+        obj1, obj2 = solver.solve(env_name, w, random_state=random_state)
         # Get V_PI from solver
         V_PI = V_P(obj1=obj1, obj2=obj2, start=Point(x=0.0, y=obj1), end=Point(x=1.0, y=obj2))
         print(V_PI)
