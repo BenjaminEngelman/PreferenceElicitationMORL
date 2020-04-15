@@ -9,8 +9,9 @@ from src.utils import CustomPolicy
 from stable_baselines import PPO2, A2C, DQN
 from stable_baselines.common import make_vec_env
 from gym.wrappers import TimeLimit
-from stable_baselines.common.vec_env import DummyVecEnv
+from stable_baselines.common import make_vec_env
 from stable_baselines.common.callbacks import CheckpointCallback
+from stable_baselines.common.vec_env import DummyVecEnv
 
 
 
@@ -22,21 +23,22 @@ if __name__ == "__main__":
     env = MultiObjRewardWrapper(env, weights)
     env = TimeLimit(env, max_episode_steps=1000)
     env = DummyVecEnv([lambda: env])
-    
 
-    if sys.argv[1] == "PPO":
-        model = PPO2(
-            MlpPolicy,
-            env,
-            verbose=1,
-            gamma=0.98,
-            max_grad_norm=50,
-            n_steps=500,
-            learning_rate=3e-4,
-            policy_kwargs={'net_arch': [{'vf': [128], 'pi': [128]}]},
-            tensorboard_log="src/tensorboard/")
+    arch = [int(x) for x in sys.argv[2:]]
 
-    elif sys.argv[1] == "A2C":
+    # if sys.argv[1] == "PPO":
+    #     model = PPO2(
+    #         MlpPolicy,
+    #         env,
+    #         verbose=1,
+    #         gamma=0.98,
+    #         max_grad_norm=50,
+    #         n_steps=500,
+    #         learning_rate=3e-4,
+    #         policy_kwargs={'net_arch': [{'vf': [128], 'pi': [128]}]},
+    #         tensorboard_log="src/tensorboard/")
+
+    if sys.argv[1] == "A2C":
         model = A2C(MlpPolicy,
                     env,
                     vf_coef=0.5,
@@ -47,7 +49,7 @@ if __name__ == "__main__":
                     learning_rate=3e-4,
                     gamma=0.98,
                     n_cpu_tf_sess=2,
-                    policy_kwargs={'net_arch': [{'vf': [128], 'pi': [128]}]},
+                    policy_kwargs={'net_arch': [{'vf': arch, 'pi': arch}]},
                     tensorboard_log="src/tensorboard/"
         )
    
@@ -56,12 +58,13 @@ if __name__ == "__main__":
             DQNMlpPolicy,
             env,
             verbose=1,
+            train_freq=500,
             tensorboard_log="src/tensorboard/",
             gamma=0.98,
             prioritized_replay=True,
-            policy_kwargs={'layers': [32, 32, 32]},
+            policy_kwargs={'layers': arch},
             learning_rate=3e-4,
-            exploration_final_eps=0.05,
+            exploration_final_eps=0.01,
 
         )   
 
@@ -69,6 +72,6 @@ if __name__ == "__main__":
         print("Wrong method")
         exit()
 
-    checkpoint_callback = CheckpointCallback(save_freq=500000, save_path='./checkpoints', name_prefix=f'{sys.argv[1]}_minecart')
-    model.learn(total_timesteps=int(5e7), callback=checkpoint_callback)
-    model.save(f"{sys.argv[1]}_minecart_final")
+    checkpoint_callback = CheckpointCallback(save_freq=10_000_000, save_path='./checkpoints', name_prefix=f'{sys.argv[1]}_{arch}_minecart_{weights}')
+    model.learn(total_timesteps=int(100_000_000), callback=checkpoint_callback)
+    model.save(f"{sys.argv[1]}_{arch}_minecart_{weights}_final")
