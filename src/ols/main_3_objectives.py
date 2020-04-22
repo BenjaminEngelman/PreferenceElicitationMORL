@@ -1,7 +1,3 @@
-# import sys
-# sys.path.insert(0, '..')
-
-from src.utils import get_best_sol, create_3D_pareto_front
 from recordclass import recordclass
 from time import time
 import numpy as np
@@ -11,24 +7,19 @@ from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 from itertools import combinations 
+from src.utils import get_best_sol
+from src.ols.utils import create_3D_pareto_front, plot_3D_pareto_front, compare_3D_pareto_fronts
+from src.solver import Solver
 
 
 
-##########################################
-# TODO :
-##########################################
-
-MIN_IMPROVEMENT = 0.1
-
-# A V_P contains: - the value of a policy (for each objective)
-#                 - the range for which in the current CCS
-V_P = recordclass("V_P", ["obj1", "obj2", "obj3" "start_w0", "end_w0", "start_w1", "end_w1"])
+MIN_IMPROVEMENT = 0.0
 
 # A CornerWeight contains: - the value (w0, w1) of the 2 first weights
 #                          - its maximum possible improvement
 CornerWeight = recordclass("CornerWeight", ["w0", "w1", "improvement"])
 
-Point = recordclass("Point", ["x", "y", "z"])
+
 
 def triangle_for_point(r):
     r = np.array(r)
@@ -38,9 +29,8 @@ def triangle_for_point(r):
     triang = tri.Triangulation(w[:,0], w[:,1], triangles=np.arange(3)[None,:])
     return triang, u
 
-def scalarize(V_PI, w0, w1):
-    w2 = 1 - w1 - w0
-    return w0 * V_PI.obj1 + w1 * V_PI.obj2 + w2 * V_PI.obj3
+def scalarize(V_PI, weights):
+    return np.dot(weights, V_PI)
 
 
 def intersection(points):
@@ -52,118 +42,67 @@ def intersection(points):
     return x
 
 
-def hasImprovement(w1, V_PI, S):
-    if len(S) == 0 or w1.improvement == -math.inf:
-        return True
-
-    currentHeight = None
-    for V in S:
-        if V.start.x == w1.val:
-            currentHeight = V.start.y
-            break
-    x, y = intersection(Point(w1.val, 0), Point(w1.val, currentHeight), Point(0, V_PI.obj1), Point(1, V_PI.obj2))
-    if y > currentHeight:
-        return True
-    else:
-        return False
-
-
-def removeObseleteValueVectors(V_PI, S):
-    for V in S:
-        s = V.start.x
-        e = V.end.x
-
-        if (scalarize(V_PI, s) > scalarize(V, s)) and (scalarize(V_PI, e) > scalarize(V, e)):
-            S.remove(V)
-
-
-def removeObseleteWeights(Q, s, e):
-    for item in Q.queue:
-        # each item is a tupe (priority, cornerweight)
-        cornerWeight = item[1]
-        if (s < cornerWeight.val < e) and (cornerWeight.improvement > -math.inf):
-            Q.queue.remove(item)
-
-
-def newCornerWeights(V_PI, S):
+def newCornerWeights(V_PI, S, W):
     """
-    Find the new corner weights by computing the intersection
-    between V_PI with all the Vs in the Partial CCS (S)
+    V_PI : The new policy (list of 3 scalars)
+    S: The policies contained in the current approximation of the CCS
+    W: The weights for which we already have executed the sub-routine
     """
+
     cornerWeights = []
 
+    # Need a least 3 Policies in S
     if len(S) < 2:
         return cornerWeights
+
     combs = combinations(S, 2) 
 
+    # Compute the intersection of V_PI with all the combinations of 2 policies in S
     for comb in combs:
-        print(comb)
         w0, w1, U = intersection([comb[0], comb[1], V_PI])
-        print(f"INTERSECTION: {[w0, w1, U]}")
 
-        fig = plt.figure()
-        plt.gca().set_aspect('equal')
-        ax = plt.axes(projection='3d')
-        for p in [comb[0], comb[1], V_PI]:
-            triang, u = triangle_for_point(p)
-            ax.plot_trisurf(triang, u, alpha=0.4)
-        ax.scatter([w0], [w1], [U], c='orange', s=70,)
-        ax.text(w0, w1, U, 'intersection')
+        # If the intersection has already been used
+        # Don't keep it
+        intersec_w = np.array([w0, w1, 1-w0-w1])
+        if list(intersec_w) in W or w0 < 0 or w0 > 1 or w1 < 0 or w1 > 1:
+            continue
+        
+        # Check if the intersection is higher/lower than the current CCS
+        # We can only add the intersection if there is no policy above it
+        can_add_intersec = True
+        for V in S:
+            if V not in comb:
+                if scalarize(V, intersec_w) > U:
+                    can_add_intersec = False
 
-        plt.show()
+        if can_add_intersec:
+            # Compute the maximum improvement
+            ceiling_plane = [
+                max(comb[0][0], comb[1][0], V_PI[0]),
+                max(comb[0][1], comb[1][1], V_PI[1]),
+                max(comb[0][2], comb[1][2], V_PI[2]),
+            ]
+            u_ceiling_plane = scalarize(ceiling_plane, intersec_w)
+            improv = u_ceiling_plane - U
 
-    # for V in S:
-        # print([w0, w1, U])
-        # # If intersection is in the range of line (p1, p2) and (p3, p4)
-        # if not (cornerW > V_PI.end.x or cornerW < V_PI.start.x or cornerW > V.end.x or cornerW < V.start.x):
-        #     if V_PI.obj1 > V.obj1:
-        #         V.start.x = cornerW
-        #         V.start.y = Y
-        #         V_PI.end.x = cornerW
-        #         V_PI.end.y = Y
-        #     else:
-        #         V.end.x = cornerW
-        #         V.end.y = Y
-        #         V_PI.start.x = cornerW
-        #         V_PI.start.y = Y
-
-        #     cornerWeights.append(CornerWeight(val=cornerW, improvement=None))
+            cornerWeights.append(CornerWeight(w0=w0, w1=w1, improvement=improv))
 
     return cornerWeights
 
 
-def estimateImprovement(cornerWeight, S):
-    """
-    Compute the maximum improvement given the current estimation of the CSS and
-    a corner weight
-    """
-    for V in S:
-        if V.start.x == cornerWeight:
-            lastPoint = V.end
-            cornerPoint = V.start
-        elif V.end.x == cornerWeight:
-            firstPoint = V.start
-    _, height = intersection(firstPoint, lastPoint,
-                             Point(cornerWeight, 1000), cornerPoint)
-    return height - cornerPoint.y
-
-
-def ols():
-    pareto_front = create_3D_pareto_front(size=30, seed=0)
+def ols(S=[], W=[], Q=queue.PriorityQueue(), num_iter=0, run_name="ols_run"):
+    # pareto_front = create_3D_pareto_front(size=10, seed=0)
+    solver = Solver()
     start = time()
-
-    S = []  # Partial CCS
-    W = []  # Visited weights
-    Q = queue.PriorityQueue()  # To prioritize the weights
 
     # Add the two extremum values for the weights in the Queue
     # With infinite priority
-    Q.put((-math.inf, CornerWeight(w0=1.0, w1=0.0, improvement=-math.inf)))
-    Q.put((-math.inf, CornerWeight(w0=0.0, w1=1.0, improvement=-math.inf)))
-    Q.put((-math.inf, CornerWeight(w0=0.0, w1=0.0, improvement=-math.inf)))
+    if num_iter == 0:
+        Q.put((-math.inf, CornerWeight(w0=1.0, w1=0.0, improvement=-math.inf)))
+        Q.put((-math.inf, CornerWeight(w0=0.0, w1=1.0, improvement=-math.inf)))
+        Q.put((-math.inf, CornerWeight(w0=0.0, w1=0.0, improvement=-math.inf)))
 
 
-    num_iter = 0
     while not Q.empty():
         print("\nITERATION: %d" % num_iter)
         print(Q.queue)
@@ -173,46 +112,79 @@ def ols():
 
         # Call solver with this weight
         w = np.array([w_values.w0, w_values.w1, 1 - w_values.w0 - w_values.w1])
-        print("Solving for weights: ", w)
-        obj1, obj2, obj3 = get_best_sol(pareto_front, w)
+
+        # print("Solving for weights: ", w)
+        W.append(list(w))
+        obj1, obj2, obj3 = solver.solve("minecart", w)
+        
+        # obj1, obj2, obj3 = get_best_sol(pareto_front, w)
         V_PI = [obj1, obj2, obj3]
-        # Get V_PI from solver
+
         print(f"RETURNS : {V_PI}")
 
         if V_PI not in S: #and hasImprovement(w_values, V_PI, S):
-            # Remove obseletes Vs from S
-            # removeObseleteValueVectors(V_PI, S)
-
-            # # PLOT
-            # fig = plt.figure()
-            # plt.gca().set_aspect('equal')
-            # ax = plt.axes(projection='3d')
-            # for V in S + [V_PI]:
-            #     triang, u = triangle_for_point(np.array(V))
-            #     ax.plot_trisurf(triang, u, alpha=0.4)
-            # ax.set_xlabel('w0')
-            # ax.set_ylabel('w1')
-            # ax.set_zlabel('u')
-            # plt.show()
-
 
             # Find new cornerweights
-            W_V_PI = newCornerWeights(V_PI, S)
+            W_V_PI = newCornerWeights(V_PI, S, W)
             
             S.append(V_PI)
-            # removeObseleteWeights(Q, V_PI.start.x, V_PI.end.x)
-            # for cornerWeight in W_V_PI:
-            #     cornerWeight.improvement = estimateImprovement(
-            #         cornerWeight.val, S)
-            #     if cornerWeight.improvement > MIN_IMPROVEMENT and cornerWeight.val not in W:
-            #         # priority = -improvement because high priority = small number
-            #         Q.put((-cornerWeight.improvement, cornerWeight))
+            for cornerWeight in W_V_PI:
+
+                if cornerWeight.improvement > MIN_IMPROVEMENT:
+                    # priority = -improvement because high priority = small number
+                    Q.put((-cornerWeight.improvement, cornerWeight))
 
         num_iter += 1
 
+        # Save S, Q, W, num_iter
+        with open(f'runs_ols/{run_name}/S.pkl', 'wb') as handle:
+            pickle.dump(S, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
+        with open(f'runs_ols/{run_name}/Q.pkl', 'wb') as handle:
+            pickle.dump(Q.queue, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
+        with open(f'runs_ols/{run_name}/W.pkl', 'wb') as handle:
+            pickle.dump(W, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
+        with open(f'runs_ols/{run_name}/num_iter.pkl', 'wb') as handle:
+            pickle.dump(num_iter, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        
+        print(Q.queue)
+
     total_time = time() - start
+
     print("Number of iterations: %d" % num_iter)
     print("Time (s): %.2f" % total_time)
+    # compare_3D_pareto_fronts(pareto_front, np.array(S))
+    
 
 if __name__ == "__main__":
-    ols()
+    import os
+    import argparse
+    import pickle
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--name")
+    parser.add_argument("--resume", action="store_true")
+    args = parser.parse_args()
+
+    if not os.path.isdir('runs_ols'):
+        os.mkdir("runs_ols")
+    
+    if not args.resume:
+        if not os.path.isdir(f'runs_ols/{args.name}'):
+            os.mkdir(f'runs_ols/{args.name}')
+        ols(run_name=args.name)
+    
+    else:
+        path = f'runs_ols/{args.name}'
+        S = pickle.load(open(f'{path}/S.pkl', 'rb'))
+        W = pickle.load(open(f'{path}/W.pkl', 'rb'))
+        num_iter = pickle.load(open(f'{path}/num_iter.pkl', 'rb'))
+        # Hack because we  cannot pickle PrioritiQueue
+        # We picke its its internal queue which is a list
+        _queue = pickle.load(open(f'{path}/Q.pkl', 'rb'))
+        Q = queue.PriorityQueue()
+        Q.queue = _queue
+    
+        ols(S=S, W=W, Q=Q, num_iter=num_iter, run_name=args.name)

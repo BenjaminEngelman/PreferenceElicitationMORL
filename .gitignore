@@ -1,8 +1,10 @@
 todo.txt
 tensorboard/
+tensorboard_hydra/
 *.png
 *.log
 *.pyc
+old/
 
 # IDEs
 .vscode
@@ -19,3 +21,5 @@ minecart/
 
 # saved agents
 *.zip
+runs_ols/
+saved_agents/

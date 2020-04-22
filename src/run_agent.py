@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     env = MinecartObsWrapper(MinecartDeterministicEnv())
-    model = A2C.load(f"{sys.argv[1]}_minecart")
+    model = A2C.load("A2C_2_hidden_layers")
     obs = env.reset()
     env.render()
     dones = False

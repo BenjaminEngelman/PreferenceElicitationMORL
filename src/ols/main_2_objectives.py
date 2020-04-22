@@ -1,9 +1,8 @@
 # import sys
 # sys.path.insert(0, '..')
 
-from src.utils import plot_ccs, plot_ccs_2
+from src.ols.utils import plot_ccs, plot_ccs_2
 from src.env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
-from src.agents import MOQlearning
 from src.solver import Solver
 from recordclass import recordclass
 from time import time
