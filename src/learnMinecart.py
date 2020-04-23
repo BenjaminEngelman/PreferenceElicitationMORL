@@ -16,7 +16,9 @@ from stable_baselines.common.vec_env import DummyVecEnv
 
 
 if __name__ == "__main__":
-    weights = np.array([0.99, 0.0, 0.01])
+
+    weights = np.array([float(x) for x in sys.argv[2:]])
+    arch = [64, 64]
 
     env = MinecartDeterministicEnv()
     env = MinecartObsWrapper(env)
@@ -24,7 +26,6 @@ if __name__ == "__main__":
     env = TimeLimit(env, max_episode_steps=1000)
     env = DummyVecEnv([lambda: env])
 
-    arch = [int(x) for x in sys.argv[2:]]
 
     # if sys.argv[1] == "PPO":
     #     model = PPO2(
@@ -48,7 +49,6 @@ if __name__ == "__main__":
                     # clip_loss_value=100,
                     learning_rate=3e-4,
                     gamma=0.98,
-                    n_cpu_tf_sess=2,
                     policy_kwargs={'net_arch': [{'vf': arch, 'pi': arch}]},
                     tensorboard_log="src/tensorboard/"
         )
@@ -72,6 +72,6 @@ if __name__ == "__main__":
         print("Wrong method")
         exit()
 
-    checkpoint_callback = CheckpointCallback(save_freq=10_000_000, save_path='./checkpoints', name_prefix=f'{sys.argv[1]}_{arch}_minecart_{weights}')
-    model.learn(total_timesteps=int(100_000_000), callback=checkpoint_callback)
-    model.save(f"{sys.argv[1]}_{arch}_minecart_{weights}_final")
+    # checkpoint_callback = CheckpointCallback(save_freq=10_000_000, save_path='./checkpoints', name_prefix=f'{sys.argv[1]}_{arch}_minecart_{weights}')
+    model.learn(total_timesteps=int(100_000_000))
+    model.save(f"{sys.argv[1]}_{weights[0]}_{weights[1]}_{weights[2]}")
