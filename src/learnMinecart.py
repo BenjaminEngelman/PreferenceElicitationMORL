@@ -74,4 +74,4 @@ if __name__ == "__main__":
 
     # checkpoint_callback = CheckpointCallback(save_freq=10_000_000, save_path='./checkpoints', name_prefix=f'{sys.argv[1]}_{arch}_minecart_{weights}')
     model.learn(total_timesteps=int(100_000_000))
-    model.save(f"{sys.argv[1]}_{weights[0]}_{weights[1]}_{weights[2]}")
+    model.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
