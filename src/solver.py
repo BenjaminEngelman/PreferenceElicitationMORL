@@ -55,6 +55,7 @@ def build_SO_minecart(weights):
 def build_MO_minecart():
     env = MinecartDeterministicEnv()
     env = MinecartObsWrapper(env)
+    env = TimeLimit(env, max_episode_steps=1000)
     return env
 
 
@@ -133,6 +134,8 @@ class Solver(object):
                 if list(most_similar_weights) == list(weights):
                     returns = self.eval_agent(agent, env_name)
                     return returns
+                else:
+                    agent.set_env(env)
 
         agent.learn(learning_steps)
         agent.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
