@@ -88,7 +88,7 @@ class Solver(object):
                 tot_reward_mo = tot_reward_mo + reward * np.power(agent.gamma, cnt)
                 cnt = cnt + 1
 
-            results.append(tot_reward_mo)
+            results.append(np.round(tot_reward_mo, 2))
         
         # Get the mode (the results observed the most)
         res = most_occuring_sublist(results)
