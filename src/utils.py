@@ -1,3 +1,4 @@
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.random import RandomState
@@ -5,16 +6,10 @@ from mpl_toolkits.mplot3d import axes3d
 import gym
 from gym import spaces
 from stable_baselines.common.policies import FeedForwardPolicy, register_policy
+from stable_baselines.common.callbacks import BaseCallback
 from src.constants import BST_SOLUTIONS
 from collections import Counter
 
-# Custom MLP policy of three layers of size 20 each
-class CustomPolicy(FeedForwardPolicy):
-    def __init__(self, *args, **kwargs):
-        super(CustomPolicy, self).__init__(*args, **kwargs,
-                                           net_arch=[dict(pi=[20, 20, 20],
-                                                          vf=[20, 20, 20])],
-                                           feature_extraction="mlp")
 
 class MinecartObsWrapper(gym.ObservationWrapper):
     def observation(self, s):
@@ -35,6 +30,33 @@ class MultiObjRewardWrapper(gym.RewardWrapper):
 
     def reward(self, rew):
         return self.weights.dot(rew)
+
+class CheckpointCallback(BaseCallback):
+    """
+    Callback for saving a model once after num_steps steps
+
+    :param num_steps: (int)
+    :param save_path: (str) Path to the folder where the model will be saved.
+    :param name_prefix: (str) Common prefix to the saved models
+    """
+    def __init__(self, save_path: str, name_prefix='rl_model', num_steps=15_000_000, verbose=0):
+        super(CheckpointCallback, self).__init__(verbose)
+        self.num_steps = num_steps
+        self.save_path = save_path
+        self.name_prefix = name_prefix
+
+    def _init_callback(self) -> None:
+        # Create folder if needed
+        if self.save_path is not None:
+            os.makedirs(self.save_path, exist_ok=True)
+
+    def _on_step(self) -> bool:
+        if self.n_calls == self.num_steps:
+            path = os.path.join(self.save_path, '{}_checkpoint'.format(self.name_prefix))
+            self.model.save(path)
+            if self.verbose > 1:
+                print("Saving model checkpoint to {}".format(path))
+        return True
 
 def most_occuring_sublist(list):
     return np.array(Counter(tuple(d) for d in list).most_common(1)[0][0])
@@ -114,10 +136,14 @@ def plot_experimentNoise(all_distances, std_distances, all_weightsEstimates, std
 
     f.savefig(f"figures/noise_{optimal_weight}_{method}.png")
 
-         
 
+def plot_weight_estimations(results, optimal_weight):
+    weight_estimations = np.array(results["weights"])
+    plt.hlines(optimal_weight[1], xmin=0, xmax=len(weight_estimations), label="Optimal")
+    plt.plot(weight_estimations, marker='o', label="Estimation")
+    plt.legend()
+    plt.show()
 
-    # axes[0].title(f"Noise experiment - Weight = {weight_vector} - {method} method")
 
 
 def get_best_sol(pareto_front, weights):
