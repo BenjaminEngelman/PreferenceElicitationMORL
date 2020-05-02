@@ -24,7 +24,7 @@ def get_pretrained_agents():
     agents = []
     dir_name = "saved_agents"
     for filename in os.listdir(dir_name):
-        if filename.split['_'][-1] == "checkpoint":
+        if filename.split('_')[-1] == "checkpoint":
             agent = A2C.load(dir_name + '/' + filename)
             weights = np.array([float(w) for w in filename.split('_')[:-1]])
             agents.append([weights, agent])
