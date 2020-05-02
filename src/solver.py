@@ -146,7 +146,8 @@ class Solver(object):
                 # If the most similar agent was trained for the same weights
                 # we don't need to learn()
                 if list(most_similar_weights) == list(weights):
-                    returns = self.eval_agent(agent, env_name)
+                    fully_trained_agent = A2C.load(f'{weights[0]}_{weights[1]}_{weights[2]}')
+                    returns = self.eval_agent(fully_trained_agent, env_name)
                     return returns
                 else:
                     agent.set_env(env)
