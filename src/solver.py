@@ -5,8 +5,11 @@ import matplotlib.pyplot as plt
 from src.agents import Qlearning
 from src.env import BountyfulSeaTreasureEnv
 from minecart.envs.minecart_env import MinecartDeterministicEnv
-from src.constants import STEPS_BST, STEPS_MINECART_COLD_START, STEPS_MINECART_HOT_START
+from src.constants import STEPS_BST, STEPS_MINECART_COLD_START, STEPS_MINECART_HOT_START, N_STEPS_BEFORE_CHECKPOINT
 from src.utils import MinecartObsWrapper, MultiObjRewardWrapper, most_occuring_sublist
+from src.utils import get_best_sol, CheckpointCallback
+from src.ols.utils import create_3D_pareto_front
+
 
 from stable_baselines import A2C
 from stable_baselines.common.vec_env import DummyVecEnv
@@ -17,13 +20,14 @@ import os
 
 A2C_ARCH = [64, 64]
 
-def get_trained_agents():
+def get_pretrained_agents():
     agents = []
     dir_name = "saved_agents"
     for filename in os.listdir(dir_name):
-        agent = A2C.load(dir_name + '/' + filename)
-        weights = np.array([float(w) for w in filename.split('_')])
-        agents.append([weights, agent])
+        if filename.split['_'][-1] == "checkpoint":
+            agent = A2C.load(dir_name + '/' + filename)
+            weights = np.array([float(w) for w in filename.split('_')[:-1]])
+            agents.append([weights, agent])
 
     return agents
 
@@ -101,12 +105,22 @@ class Solver(object):
             env = MultiObjRewardWrapper(BountyfulSeaTreasureEnv(), weights)
             learning_steps = STEPS_BST
             agent = Qlearning(env, decay=0.999997, random_state=random_state)
+        
+        elif env_name == "synt":
+            env = create_3D_pareto_front(10)
+            return get_best_sol(env, weights)
 
 
         elif env_name == "minecart":
             n_eval_runs = 100
             env = build_SO_minecart(weights)
-            trained_agents = get_trained_agents()
+            trained_agents = get_pretrained_agents()
+            checkpoint_callback = CheckpointCallback(
+                num_steps=N_STEPS_BEFORE_CHECKPOINT,
+                save_path='saved_agents',
+                name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}'
+            )
+
 
             # Train agent from scratch
             if len(trained_agents) == 0:
@@ -137,7 +151,7 @@ class Solver(object):
                 else:
                     agent.set_env(env)
 
-        agent.learn(learning_steps)
+        agent.learn(learning_steps, callback=checkpoint_callback)
         agent.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
         returns = self.eval_agent(agent, env_name, n_runs=n_eval_runs)
 
