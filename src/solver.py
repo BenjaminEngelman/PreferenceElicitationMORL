@@ -20,6 +20,7 @@ import os
 
 A2C_ARCH = [64, 64]
 
+
 def get_pretrained_agents():
     agents = []
     dir_name = "saved_agents"
@@ -30,6 +31,7 @@ def get_pretrained_agents():
             agents.append([weights, agent])
 
     return agents
+
 
 def get_most_similar_agent(weights, trained_agents):
     min_dist = np.inf
@@ -43,9 +45,8 @@ def get_most_similar_agent(weights, trained_agents):
             min_dist = dist
             most_similar_agent = agent[1]
             most_similar_weights = agent_weight
-    
-    return most_similar_weights, most_similar_agent
 
+    return most_similar_weights, most_similar_agent
 
 
 def build_SO_minecart(weights):
@@ -55,6 +56,7 @@ def build_SO_minecart(weights):
     env = TimeLimit(env, max_episode_steps=1000)
     env = DummyVecEnv([lambda: env])
     return env
+
 
 def build_MO_minecart():
     env = MinecartDeterministicEnv()
@@ -67,16 +69,17 @@ class Solver(object):
     """
     Train and evaluate an agent in its environment
     """
+
     def eval_agent(self, agent, env_name, n_runs=1):
         if env_name == "bst":
             agent.env = BountyfulSeaTreasureEnv()
         elif env_name == "minecart":
             agent.env = build_MO_minecart()
-        
+
         results = []
 
         for _ in range(n_runs):
-            
+
             state = agent.env.reset()
 
             cnt = 0
@@ -89,13 +92,15 @@ class Solver(object):
 
                 if cnt > 1000:
                     terminate = True
-                tot_reward_mo = tot_reward_mo + reward * np.power(agent.gamma, cnt)
+                tot_reward_mo = tot_reward_mo + \
+                    reward * np.power(agent.gamma, cnt)
                 cnt = cnt + 1
 
             results.append(np.round(tot_reward_mo, 2))
-        
+
         # Get the mode (the results observed the most)
-        res = most_occuring_sublist(results)
+        # res = most_occuring_sublist(results)
+        res = np.mean(np.array(results), axis=0)
 
         return res
 
@@ -105,14 +110,13 @@ class Solver(object):
             env = MultiObjRewardWrapper(BountyfulSeaTreasureEnv(), weights)
             learning_steps = STEPS_BST
             agent = Qlearning(env, decay=0.999997, random_state=random_state)
-        
+
         elif env_name == "synt":
             env = create_3D_pareto_front(10)
             return get_best_sol(env, weights)
 
-
         elif env_name == "minecart":
-            n_eval_runs = 100
+            n_eval_runs = 200
             env = build_SO_minecart(weights)
             trained_agents = get_pretrained_agents()
             checkpoint_callback = CheckpointCallback(
@@ -121,47 +125,60 @@ class Solver(object):
                 name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}'
             )
 
-
             # Train agent from scratch
             if len(trained_agents) == 0:
                 learning_steps = STEPS_MINECART_COLD_START
                 agent = A2C(MlpPolicy,
-                    env,
-                    vf_coef=0.5,
-                    ent_coef=0.01,
-                    n_steps=500,
-                    max_grad_norm=50,
-                    # clip_loss_value=100,
-                    learning_rate=3e-4,
-                    gamma=0.98,
-                    policy_kwargs={'net_arch': [{'vf': A2C_ARCH, 'pi': A2C_ARCH}]},
-                    # tensorboard_log="src/tensorboard/"
-                )
+                            env,
+                            vf_coef=0.5,
+                            ent_coef=0.01,
+                            n_steps=500,
+                            max_grad_norm=50,
+                            # clip_loss_value=100,
+                            learning_rate=3e-4,
+                            gamma=0.98,
+                            policy_kwargs={'net_arch': [
+                                {'vf': A2C_ARCH, 'pi': A2C_ARCH}]},
+                            # tensorboard_log="src/tensorboard/"
+                            )
 
             # Get the most similar already trained agent
             else:
                 most_similar_weights, agent = get_most_similar_agent(weights, trained_agents)
-                learning_steps = STEPS_MINECART_HOT_START
+                learning_steps = STEPS_MINECART_COLD_START
 
                 # If the most similar agent was trained for the same weights
                 # we don't need to learn()
                 if list(most_similar_weights) == list(weights):
-                    fully_trained_agent = A2C.load(f'saved_agents/{weights[0]}_{weights[1]}_{weights[2]}')
+                    fully_trained_agent = A2C.load(
+                        f'saved_agents/{weights[0]}_{weights[1]}_{weights[2]}')
                     returns = self.eval_agent(fully_trained_agent, env_name)
                     return returns
                 else:
-                    agent.set_env(env)
+                    agent = A2C(MlpPolicy,
+                                env,
+                                vf_coef=0.5,
+                                ent_coef=0.01,
+                                n_steps=500,
+                                max_grad_norm=50,
+                                # clip_loss_value=100,
+                                learning_rate=3e-4,
+                                gamma=0.98,
+                                policy_kwargs={'net_arch': [
+                                    {'vf': A2C_ARCH, 'pi': A2C_ARCH}]},
+                                # tensorboard_log="src/tensorboard/"
+                                )
 
         agent.learn(learning_steps, callback=checkpoint_callback)
         agent.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
         returns = self.eval_agent(agent, env_name, n_runs=n_eval_runs)
 
         return returns
-       
 
-# if __name__ == "__main__":    
-    # random_state = RandomState(42)  
-    
+
+# if __name__ == "__main__":
+    # random_state = RandomState(42)
+
     # env = BountyfulSeaTreasureEnv()
     # agent = Qlearning(env, decay=0.999997, random_state=random_state)
     # # env = MinecartDeterministicEnv()
@@ -177,4 +194,3 @@ class Solver(object):
     # # agent.demonstrate()
     # plt.imshow(env.render())
     # plt.show()
-
