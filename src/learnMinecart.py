@@ -71,7 +71,7 @@ if __name__ == "__main__":
         print("Wrong method")
         exit()
 
-    checkpoint_callback = CheckpointCallback(num_steps=10, save_path='./saved_agents', name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}')
+    checkpoint_callback = CheckpointCallback(num_steps=15_000_000, save_path='./saved_agents', name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}')
     model.learn(total_timesteps=int(70_000_000), callback=checkpoint_callback)
     model.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
     
