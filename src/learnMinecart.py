@@ -4,13 +4,12 @@ from minecart.envs.minecart_env import MinecartDeterministicEnv
 from src.utils import MultiObjRewardWrapper, MinecartObsWrapper
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.deepq.policies import MlpPolicy as DQNMlpPolicy
-from src.utils import CustomPolicy
+from src.utils import CustomPolicy, CheckpointCallback
 
 from stable_baselines import PPO2, A2C, DQN
 from stable_baselines.common import make_vec_env
 from gym.wrappers import TimeLimit
 from stable_baselines.common import make_vec_env
-from stable_baselines.common.callbacks import CheckpointCallback
 from stable_baselines.common.vec_env import DummyVecEnv
 
 
@@ -72,7 +71,7 @@ if __name__ == "__main__":
         print("Wrong method")
         exit()
 
-    # checkpoint_callback = CheckpointCallback(save_freq=10_000_000, save_path='./checkpoints', name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}')
-    model.learn(total_timesteps=int(15_000_000))#, callback=checkpoint_callback)
-    model.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}_checkpoint")
+    checkpoint_callback = CheckpointCallback(num_steps=10, save_path='./saved_agents', name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}')
+    model.learn(total_timesteps=int(70_000_000), callback=checkpoint_callback)
+    model.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
     
