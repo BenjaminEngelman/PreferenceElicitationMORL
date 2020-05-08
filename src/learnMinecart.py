@@ -4,7 +4,7 @@ from minecart.envs.minecart_env import MinecartDeterministicEnv
 from src.utils import MultiObjRewardWrapper, MinecartObsWrapper
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.deepq.policies import MlpPolicy as DQNMlpPolicy
-from src.utils import CustomPolicy, CheckpointCallback
+from src.utils import CheckpointCallback
 
 from stable_baselines import PPO2, A2C, DQN
 from stable_baselines.common import make_vec_env
