@@ -7,7 +7,7 @@ from src.env import BountyfulSeaTreasureEnv
 from minecart.envs.minecart_env import MinecartDeterministicEnv
 from src.constants import STEPS_BST, STEPS_MINECART_COLD_START, STEPS_MINECART_HOT_START, N_STEPS_BEFORE_CHECKPOINT
 from src.utils import MinecartObsWrapper, MultiObjRewardWrapper, most_occuring_sublist
-from src.utils import get_best_sol, CheckpointCallback
+from src.utils import get_best_sol, get_best_sol_BST, CheckpointCallback
 from src.ols.utils import create_3D_pareto_front
 
 
@@ -64,13 +64,28 @@ def build_MO_minecart():
     env = TimeLimit(env, max_episode_steps=1000)
     return env
 
+def highest_utility(results, w):
+    utility = lambda x: np.dot(np.array(w), np.array(x))
+
+    best_res = results[0]
+    best_util = -np.inf
+
+    for res in results:
+        util = utility(res)
+        if util > best_util:
+            best_util = utility
+            best_res = res
+
+    return best_res
+
+
 
 class Solver(object):
     """
     Train and evaluate an agent in its environment
     """
 
-    def eval_agent(self, agent, env_name, n_runs=1):
+    def eval_agent(self, agent, env_name, w, n_runs=1):
         if env_name == "bst":
             agent.env = BountyfulSeaTreasureEnv()
         elif env_name == "minecart":
@@ -100,11 +115,12 @@ class Solver(object):
 
         # Get the mode (the results observed the most)
         # res = most_occuring_sublist(results)
-        res = np.mean(np.array(results), axis=0)
+        res = highest_utility(results, w)
 
         return res
 
     def solve(self, env_name, weights, random_state=None):
+        print(env_name)
         if env_name == "bst":
             n_eval_runs = 1
             env = MultiObjRewardWrapper(BountyfulSeaTreasureEnv(), weights)
@@ -114,6 +130,9 @@ class Solver(object):
         elif env_name == "synt":
             env = create_3D_pareto_front(10)
             return get_best_sol(env, weights)
+        
+        elif env_name == "synt_bst":
+            return get_best_sol_BST(weights)
 
         elif env_name == "minecart":
             n_eval_runs = 200
@@ -152,7 +171,7 @@ class Solver(object):
                 if list(most_similar_weights) == list(weights):
                     fully_trained_agent = A2C.load(
                         f'saved_agents/{weights[0]}_{weights[1]}_{weights[2]}')
-                    returns = self.eval_agent(fully_trained_agent, env_name)
+                    returns = self.eval_agent(fully_trained_agent, env_name, weights)
                     return returns
                 else:
                     agent = A2C(MlpPolicy,
@@ -169,9 +188,12 @@ class Solver(object):
                                 # tensorboard_log="src/tensorboard/"
                                 )
 
-        agent.learn(learning_steps, callback=checkpoint_callback)
-        agent.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
-        returns = self.eval_agent(agent, env_name, n_runs=n_eval_runs)
+        if env_name == "minecart":
+            agent.learn(learning_steps, callback=checkpoint_callback)
+            agent.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
+        else:
+            agent.learn(learning_steps)
+        returns = self.eval_agent(agent, env_name, weights, n_runs=n_eval_runs)
 
         return returns
 

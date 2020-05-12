@@ -85,7 +85,7 @@ def newCornerWeights(V_PI, S, W):
             u_ceiling_plane = scalarize(ceiling_plane, intersec_w)
             improv = u_ceiling_plane - U
 
-            cornerWeights.append(CornerWeight(w0=w0, w1=w1, improvement=improv))
+            cornerWeights.append(CornerWeight(w0=np.round(w0, 2), w1=np.round(w1, 2), improvement=improv))
 
     return cornerWeights
 

@@ -37,9 +37,9 @@ BST_DIRECTIONS = ["U", "R", "D", "L"]
 # Learning constants
 STEPS_BST = 110_000
 
-STEPS_MINECART_COLD_START = 70_000_000
+STEPS_MINECART_COLD_START = 80_000_000
 N_STEPS_BEFORE_CHECKPOINT = 15_000_000
-STEPS_MINECART_HOT_START = 55_000_000
+STEPS_MINECART_HOT_START = 65_000_000
 
 # Experiments constants
 
@@ -86,4 +86,10 @@ WEIGHTS_NOISE_BST = [
     [1.0, 0.0],
     [0.5, 0.5],
     [0.1, 0.9]
+]
+
+WEIGHTS_NOISE_MINECART = [
+    [0.8, 0.0, 0.2],
+    [0.0, 0.9, 0.1],
+    [0.1, 0.0, 0.9]
 ]
