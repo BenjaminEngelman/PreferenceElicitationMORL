@@ -99,7 +99,12 @@ def findWeightsWithComparisons(user, env_name, seed):
     solver = Solver()
 
     weights_history = []
-    weights = np.array([1, 0])
+    num_obj = user.num_objectives
+
+    # The first weight has a 1 for one random objective and 0 for the orhers
+    initial_one_pos = np.random.randint(0, num_obj)
+    weights = np.array([0 if pos is not initial_one_pos else 1 for pos in range(num_obj)])
+
     weights_history.append(weights[1])
 
     prev_weights = weights + 1
@@ -112,13 +117,12 @@ def findWeightsWithComparisons(user, env_name, seed):
     
 
     # When the difference between two successive estimated weights is below eps. we stop
-    epsilon = 1e-3
     it = 0
     while it < 10:  # or not (np.abs(prev_weights - weights)<epsilon).all():
         logging.info("\nIteration %d" % it)
         logging.info("Current weights estimates :" + str(weights))
 
-        # Q-learning
+        # Single objective solver
         returns = solver.solve(env_name, weights, random_state=random_state)
         logging.info("Returns for current weights: " + str(returns))
 
@@ -126,7 +130,7 @@ def findWeightsWithComparisons(user, env_name, seed):
         logs["returns"].append(returns)
         logs["weights"].append(weights[1])
 
-        if it == 0:
+        if it < num_obj - 1:
             # The second weight we test is [0, 1]
             # We need at least two policies before starting to compare
             prev_weights = weights

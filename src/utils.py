@@ -90,7 +90,7 @@ def argmax(l):
     return max(enumerate(l), key=lambda x: x[1])[0]
 
 
-def plot_compareMethods(distances_withComp, distances_withAbsRet, weights_withComp, weights_withAbsRet, optimal_weight, noise):
+def plot_compareMethods(experiemnt_id, distances_withComp, distances_withAbsRet, weights_withComp, weights_withAbsRet, optimal_weight, noise):
     f, axes = plt.subplots(nrows=1, ncols=2, figsize=(20,7))
     # Distances to optimal return
     axes[0].set_title("Distance to optimal return")
@@ -106,12 +106,12 @@ def plot_compareMethods(distances_withComp, distances_withAbsRet, weights_withCo
 
     axes[1].plot(weights_withComp, label="Comparaisons", marker='o')
     axes[1].plot(weights_withAbsRet, label="Absolute return", marker='o')
-    axes[1].hlines(optimal_weight, xmin=0, xmax=len(weights_withAbsRet), label="optimal")
+    axes[1].hlines(optimal_weight[1], xmin=0, xmax=len(weights_withAbsRet), label="optimal")
     axes[1].legend()
 
-    f.savefig(f"figures/comp_methods_{optimal_weight}_noise_{noise}.png")    
+    f.savefig(f"experiments/{experiemnt_id}/comp_methods_{optimal_weight}_noise_{noise}.png")    
 
-def plot_experimentNoise(all_distances, std_distances, all_weightsEstimates, std_weightsEstimates, noise_values, optimal_weight, method):
+def plot_experimentNoise(experiment_id, all_distances, std_distances, all_weightsEstimates, std_weightsEstimates, noise_values, optimal_weight, method):
     f, axes = plt.subplots(nrows=1, ncols=2, figsize=(20,7))
 
     print(std_distances)
@@ -134,7 +134,7 @@ def plot_experimentNoise(all_distances, std_distances, all_weightsEstimates, std
     axes[1].hlines(optimal_weight, xmin=0, xmax=8, label="optimal")
     axes[1].legend()
 
-    f.savefig(f"figures/noise_{optimal_weight}_{method}.png")
+    f.savefig(f"experiments/{experiemnt_id}/noise_{optimal_weight}_{method}.png")
 
 
 def plot_weight_estimations(results, optimal_weight):

@@ -30,7 +30,8 @@ class User(object):
             self.hidden_weights = self.random_state.uniform(0.0, 1, num_objectives)
             self.hidden_weights /= np.sum(self.hidden_weights)
         
-        self.utilities = [self.hidden_weights[0] * sol[0] + self.hidden_weights[1] * sol[1] for sol in BST_SOLUTIONS]
+        if self.num_objectives == 2:
+            self.utilities = [self.hidden_weights[0] * sol[0] + self.hidden_weights[1] * sol[1] for sol in BST_SOLUTIONS]
 
     def get_utility(self, values, with_noise=True):
         noise = self.random_state.normal(0, self.std_noise)
@@ -38,12 +39,15 @@ class User(object):
         for i in range(self.num_objectives):
             utility += values[i] * self.hidden_weights[i]
 
-        utility  = (utility - min(self.utilities)) / (max(self.utilities) - min(self.utilities))
+        if self.num_objectives == 2:
+            # Normalise
+            utility  = (utility - min(self.utilities)) / (max(self.utilities) - min(self.utilities))
+            utility = np.clip(utility, 0, 1)
+
         if with_noise:
             utility += noise
-        return np.clip(utility, 0, 1)
+        return utility
     
-
 
     def save_comparison(self, p1, p2, result):
         """

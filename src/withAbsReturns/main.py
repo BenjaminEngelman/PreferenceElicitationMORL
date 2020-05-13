@@ -62,7 +62,7 @@ def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
     random_state = RandomState(seed)
 
     # Setup of the environment and agent
-    n_obj = 2
+    n_obj = user.num_objectives
     solver = Solver() # Used to train and evaluate the agent on the environements
     logs = {
         "returns": [],
@@ -84,10 +84,11 @@ def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
         logging.info("Current weights estimates: " + str(weights))
 
         # Solve the environement for some random weights
-        w1_to_solve = random_state.uniform(0, 1)
-        w_to_solve = np.array([w1_to_solve, 1 - w1_to_solve])
+        w_to_solve = random_state.uniform(0.0, 1, n_obj)
+        w_to_solve /= np.sum(w_to_solve)
+
         returns = solver.solve(env_name, w_to_solve, random_state=random_state)
-        logging.info("Returns for the weights " + str(w1_to_solve) + ": " + str(returns))
+        logging.info("Returns for the weights " + str(w_to_solve) + ": " + str(returns))
 
         logs["weights"].append(weights[1])
         # Solve the env for the current weight estimate and add to logs
@@ -100,7 +101,7 @@ def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
         
 
         # Add those to our dataset
-        X.append(returns)
+        X.append(np.array(returns))
         y.append(u)
 
         # Estimate new weights
@@ -129,13 +130,15 @@ def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
 
 
 if __name__ == "__main__":
+    from src.utils import plot_weight_estimations
     ts = datetime.datetime.now().timestamp()
     logging.basicConfig(
         format='%(message)s', filename=f'src/withAbsReturns/logs/experiment_{ts}.log', level=logging.INFO)
 
     seed = 1
     rs = RandomState(seed)
-    user = User(num_objectives=2, std_noise=0.001, random_state=rs, weights=[0.9, 0.1])
-    logs = findWeightsWithAbsReturns(user, env_name="bst", seed=seed)
-    print(logs)
+    user_w = [0.9, 0.1, 0.0]
+    user = User(num_objectives=3, std_noise=0.001, random_state=rs, weights=user_w)
+    logs = findWeightsWithAbsReturns(user, env_name="3d_synthetic", seed=seed)
+    plot_weight_estimations(logs, user_w)
 

@@ -3,12 +3,14 @@ import matplotlib.pyplot as plt
 from numpy.random import RandomState
 
 from src.user import User
-from src.constants import BST_MAX_TIME, BST_MAX_TREASURE
+from src.constants import *
 from src.withComparisons.main import findWeightsWithComparisons
 from src.withAbsReturns.main import findWeightsWithAbsReturns
 # from ols.main import ols
 from src.utils import plot_compareMethods, plot_experimentNoise, computeFromNestedLists
-from src.utils import get_best_sol_BST
+from src.utils import get_best_sol_BST, get_best_sol
+from src.ols.utils import create_3D_pareto_front
+
 
 
 def get_distances_from_optimal_returns(logged_returns, optimal_returns):
@@ -27,26 +29,25 @@ def get_distances_from_optimal_returns(logged_returns, optimal_returns):
     return distances
 
 
-def compareMethods(env_name):
+def compareMethods(experiment_id, env_name):
     """
     Compare withComparaisons and withAbsReturns
     """
 
     # For each of those weights the optimal return is different
     # We only consider w1 as w0 = 1 - w1
-    WEIGHTS_LIST = [
-        0.0,
-        0.9,
-        0.66,
-        0.8,
-        0.5,
-        0.75,
-        0.30,
-        0.38,
-        0.60,
-        0.18
-    ]
+    if env_name == "bst":
+        num_obj = 2
+        WEIGHTS_LIST = WEIGHTS_COMP_BST
 
+    elif env_name == "synt":
+        solutions = create_3D_pareto_front()
+        num_obj = 3
+
+        WEIGHTS_LIST = WEIGHTS_COMP_SYNT
+    elif env_name == "minecart":
+        num_obj = 3
+        WEIGHTS_LIST = WEIGHTS_NOISE_MINECART
 
     noise = 0.001
     seed = 1
@@ -57,15 +58,29 @@ def compareMethods(env_name):
         print(f"Weight = {weight}")
         print("---------")
 
-        weight_vector = np.array([1-weight, weight])
-        optimal_returns = get_best_sol_BST(weight_vector)
+        # Get the optimal return for the current weight
+        # So we can compare the result of the P.E. method
+        weight_vector = np.array(weight)
+        if env_name == "bst":
+            optimal_returns = get_best_sol_BST(weight_vector)
 
+        elif env_name == "synt":
+            optimal_returns = get_best_sol(solutions, weight_vector)
+
+        elif env_name == "minecart":
+            print("Not Ready yet")
+            exit()
+
+        # Create a user with those weights (i.e. preferences)
         user = User(
-            num_objectives=2,
+            num_objectives=num_obj,
             std_noise=noise,
             random_state=random_state,
             weights=weight_vector
         )
+
+        # P.E. Methods
+        ##############
 
         # WithComparaisons
         logs_comps = findWeightsWithComparisons(user, env_name, seed=seed)
@@ -79,6 +94,7 @@ def compareMethods(env_name):
             logs_abs["returns"], optimal_returns)
 
         plot_compareMethods(
+            experiment_id,
             distances_withComp,
             distances_withAbsRet,
             logs_comps["weights"][2:],
@@ -88,13 +104,18 @@ def compareMethods(env_name):
         )
 
 
-def experimentNoise(method, env_name):
+def experimentNoise(experiment_id, method, env_name):
 
-    WEIGHTS_LIST = [
-        0.0,
-        0.5,
-        0.9
-    ]
+    if env_name == "synt":
+        num_obj = 3
+        WEIGHTS_LIST = WEIGHTS_NOISE_SYNT
+    elif env_name == "bst":
+        num_obj = 2
+        WEIGHTS_LIST = WEIGHTS_COMP_BST
+    elif env_name == "minecart":
+        num_obj = 3
+        WEIGHTS_LIST = WEIGHTS_NOISE_MINECART
+
 
     nseed = 10
 
@@ -108,8 +129,19 @@ def experimentNoise(method, env_name):
         print(f"Weight = {weight}")
         print("---------")
 
-        weight_vector = np.array([1-weight, weight])
-        optimal_returns = get_best_sol_BST(weight_vector)
+        weight_vector = np.array(weight)
+
+        # Get the optimal return for the current weight
+        # So we can compare the result of the P.E. method
+        if env_name == "bst":
+            optimal_returns = get_best_sol_BST(weight_vector)
+
+        elif env_name == "synt":
+            optimal_returns = get_best_sol(solutions, weight_vector)
+
+        elif env_name == "minecart":
+            print("Not Ready yet")
+            exit()
 
         mean_distances, std_distances = [], []
         mean_weightEstimates, std_weightEstimates = [], []
@@ -125,7 +157,7 @@ def experimentNoise(method, env_name):
                 print(f"Seed: {seed}")
                 
                 user = User(
-                    num_objectives=2,
+                    num_objectives=num_obj,
                     std_noise=noise,
                     random_state=random_state,
                     weights=weight_vector
@@ -161,6 +193,7 @@ def experimentNoise(method, env_name):
 
 
         plot_experimentNoise(
+            experiment_id,
             mean_distances,
             std_distances,
             mean_weightEstimates,
@@ -173,31 +206,38 @@ def experimentNoise(method, env_name):
 
 if __name__ == "__main__":
 
-    import argparse
+    import argparse, os
     parser = argparse.ArgumentParser()
+    parser.add_argument('--eid', help="The id of the experiment")
     parser.add_argument('--experiment', choices=('comp', 'noise', 'all'), help="The name of the experiment to run")
     parser.add_argument('--method', choices=('comparisons', 'absolute', 'all'), help="The name of the method")
-    parser.add_argument('--env', choices=('bst', 'minecart'), help="help the name of the environement to solve")
+    parser.add_argument('--env', choices=('bst', 'minecart', 'synt'), help="help the name of the environement to solve")
 
     args = parser.parse_args()
+    if args.eid == None:
+        print("Please provide an experiment ID")
+        exit()
+    else:
+        os.mkdir(f"experiments/{args.eid}/")
+
     if args.experiment == "noise" and args.method == None:
         print("Please specify the name of the method")
-    
+        exit()
 
     if args.experiment == "comp":
-        compareMethods(args.env)
+        compareMethods(args.eid, args.env)
     
     elif args.experiment == "noise":
         if args.method != "all":
-            experimentNoise(args.method, args.env)
+            experimentNoise(args.eid, args.method, args.env)
         else:
-            experimentNoise("absolute", args.env)
-            experimentNoise("comparisons", args.env)
+            experimentNoise(args.eid, "absolute", args.env)
+            experimentNoise(args.eid, "comparisons", args.env)
     
     else:
-        compareMethods(args.env)
-        experimentNoise("absolute", args.env)
-        experimentNoise("comparisons", args.env)
+        compareMethods(args.eid, args.env)
+        experimentNoise(args.eid, "absolute", args.env)
+        experimentNoise(args.eid, "comparisons", args.env)
 
     
         

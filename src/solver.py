@@ -120,7 +120,6 @@ class Solver(object):
         return res
 
     def solve(self, env_name, weights, random_state=None):
-        print(env_name)
         if env_name == "bst":
             n_eval_runs = 1
             env = MultiObjRewardWrapper(BountyfulSeaTreasureEnv(), weights)
