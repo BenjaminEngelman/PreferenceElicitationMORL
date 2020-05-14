@@ -73,7 +73,7 @@ def highest_utility(results, w):
     for res in results:
         util = utility(res)
         if util > best_util:
-            best_util = utility
+            best_util = util
             best_res = res
 
     return best_res
