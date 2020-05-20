@@ -47,7 +47,7 @@ if __name__ == "__main__":
                     env,
                     vf_coef=0.5,
                     ent_coef=0.01,
-                    n_steps=500,
+                    n_steps=500/n_envs,
                     max_grad_norm=50,
                     # clip_loss_value=100,
                     learning_rate=3e-4,
@@ -76,7 +76,7 @@ if __name__ == "__main__":
         exit()
 
     # checkpoint_callback = CheckpointCallback(num_steps=15_000_000, save_path='./saved_agents', name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}')
-    model.learn(total_timesteps=int(80_000_000), callback=checkpoint_callback)
+    model.learn(total_timesteps=int(7_000_000))
     model.save("test_parallel")
     # model.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
     
