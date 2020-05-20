@@ -53,6 +53,7 @@ if __name__ == "__main__":
                     learning_rate=3e-4,
                     gamma=0.98,
                     policy_kwargs={'net_arch': [{'vf': arch, 'pi': arch}]},
+                    full_tensorboard_log=True,
                     tensorboard_log="src/tensorboard/"
         )
    
