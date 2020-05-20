@@ -10,7 +10,7 @@ from stable_baselines import PPO2, A2C, DQN
 from stable_baselines.common import make_vec_env
 from gym.wrappers import TimeLimit
 from stable_baselines.common import make_vec_env
-from stable_baselines.common.vec_env import DummyVecEnv
+from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
 
 
 
@@ -18,12 +18,16 @@ if __name__ == "__main__":
 
     weights = np.array([float(x) for x in sys.argv[2:]])
     arch = [64, 64]
+    def make_env():
+        env = MinecartDeterministicEnv()
+        env = MinecartObsWrapper(env)
+        env = MultiObjRewardWrapper(env, weights)
+        env = TimeLimit(env, max_episode_steps=10000)
+        # env = DummyVecEnv([lambda: env])
+        return env
 
-    env = MinecartDeterministicEnv()
-    env = MinecartObsWrapper(env)
-    env = MultiObjRewardWrapper(env, weights)
-    env = TimeLimit(env, max_episode_steps=1000)
-    env = DummyVecEnv([lambda: env])
+    n_envs = 8
+    env = SubprocVecEnv([lambda i=i: make_env() for i in range(n_envs)])
 
 
     # if sys.argv[1] == "PPO":
