@@ -17,7 +17,7 @@ from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
 if __name__ == "__main__":
 
     weights = np.array([float(x) for x in sys.argv[2:]])
-    arch = [64, 64]
+    arch = [20, 20, 20]
     def make_env():
         env = MinecartDeterministicEnv()
         env = MinecartObsWrapper(env)
@@ -51,10 +51,11 @@ if __name__ == "__main__":
                     max_grad_norm=50,
                     # clip_loss_value=100,
                     learning_rate=3e-4,
-                    gamma=0.98,
+                    gamma=0.99,
                     policy_kwargs={'net_arch': [{'vf': arch, 'pi': arch}]},
                     full_tensorboard_log=True,
-                    tensorboard_log="src/tensorboard/"
+                    tensorboard_log="src/tensorboard/",
+                    verbose=1,
         )
    
     elif sys.argv[1] == "DQN":
@@ -77,7 +78,7 @@ if __name__ == "__main__":
         exit()
 
     # checkpoint_callback = CheckpointCallback(num_steps=15_000_000, save_path='./saved_agents', name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}')
-    model.learn(total_timesteps=int(7e6))
+    model.learn(total_timesteps=int(15e6))
     model.save("test_parallel")
     # model.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
     
