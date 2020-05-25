@@ -31,7 +31,7 @@ class MultiObjRewardWrapper(gym.RewardWrapper):
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
 
     def reward(self, rew):
-        print(f"reward {self.weights.dot(rew)}")
+        # print(f"reward {self.weights.dot(rew)}")
         return self.weights.dot(rew)
 
 class CheckpointCallback(BaseCallback):
@@ -149,7 +149,7 @@ def plot_weight_estimations(results, optimal_weights):
     plt.legend()
     plt.show()
 
-def plot_on_ternary_map(results, optimal_weights, env_name):
+def plot_on_ternary_map(results, optimal_weights, env_name, method=None, experiment_id=None):
     weight_estimations = np.array(results["weights"])
     if env_name == "synt":
         with open('synthetic_pareto_front/pf.pickle', 'rb') as handle:
@@ -180,7 +180,11 @@ def plot_on_ternary_map(results, optimal_weights, env_name):
     tax.right_axis_label("$w_1$", fontsize=20)
     tax.bottom_axis_label("$w_0$", fontsize=20)
     tax.get_axes().axis('off')
-    tax.show()
+    if experiment_id == None:
+        tax.show()
+    else:
+        tax.savefig(f"experiments/{experiment_id}/{optimal_weights}_{method}.png")
+
 
 
 

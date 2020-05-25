@@ -3,6 +3,8 @@ import numpy as np
 import sys
 from src.constants import BST_SOLUTIONS
 from src.utils import get_best_sol_BST
+from scipy import stats
+import math
 
 sys.path.insert(0, '..')
 
@@ -32,20 +34,26 @@ class User(object):
         
         if self.num_objectives == 2:
             self.utilities = [self.hidden_weights[0] * sol[0] + self.hidden_weights[1] * sol[1] for sol in BST_SOLUTIONS]
+            # print("UTILITIES")
+            # print(self.utilities)
 
     def get_utility(self, values, with_noise=True):
         noise = self.random_state.normal(0, self.std_noise)
         utility = 0
         for i in range(self.num_objectives):
             utility += values[i] * self.hidden_weights[i]
-
-        if self.num_objectives == 2:
-            # Normalise
-            utility  = (utility - min(self.utilities)) / (max(self.utilities) - min(self.utilities))
-            utility = np.clip(utility, 0, 1)
-
+        # print("UTILITY")
+        # if self.num_objectives == 2:
+        #     # Normalise
+        #     utility  = (utility - min(self.utilities)) / (max(self.utilities) - min(self.utilities))
+        #     utility = np.clip(utility, 0, 1)
+        #     utility *= 10
+        # print("NORM UTILITY")
+        # print(utility)
+        # print()
         if with_noise:
             utility += noise
+        
         return utility
     
 
@@ -66,21 +74,18 @@ class User(object):
         Compare the policies p1 and p2 and returns the prefered and rejected ones
         
         """
-        scalar_p1 = self.get_utility(p1.returns, with_noise=with_noise)
-        scalar_p2 = self.get_utility(p2.returns, with_noise=with_noise)
+        scalar_p1 = self.get_utility(p1, with_noise=with_noise)
+        scalar_p2 = self.get_utility(p2, with_noise=with_noise)
         res = scalar_p1 >= scalar_p2  # 1 if p1 > p2 else 0
+
         prefered, rejected = (p1, p2) if res else (p2, p1)
         u_pref, u_rej = (scalar_p1, scalar_p2) if res else (scalar_p2, scalar_p1)
 
-        self.save_comparison(p1.returns, p2.returns, res)
+        self.save_comparison(p1, p2, res)
         return prefered, rejected, u_pref, u_rej
 
-    def current_map(self, weights):
+    def current_map(self, weights=None):
         if len(self.outcomes) > 0:
-            # try :
-            # clf = linear_model.LogisticRegression(C=1e5)
-            # clf.fit(self.previous_comparisons, self.previous_outcomes)
-            # unnorm_w = clf.coef_[0]
             w_prior = np.ones(len(self.hidden_weights)) / \
                 len(self.hidden_weights)
             # w_prior = weights
@@ -89,16 +94,33 @@ class User(object):
             w_fit, H_fit = bl.fit_bayes_logistic(np.array(self.outcomes),
                                                  np.array(self.comparisons),
                                                  w_prior,
-                                                 H_prior_diag)
+                                                 H_prior_diag,
+                                                 )
+            # print(samples) 
+            # exit()
+
             unnorm_w = w_fit
-            # except:
-            #     unnorm_w = np.array([random.random() for x in range(len(self.weights))])
-            #     w_fit = unnorm_w
-            #     H_fit = None
+            unnorm_w[unnorm_w < 0] = 0 # No negative values
+
             sum_w = sum(unnorm_w)
-            return unnorm_w / sum_w
-        else:
-            result = np.ones(len(self.hidden_weights))
-            for i in range(len(self.hidden_weights)):
-                result[i] = result[i] / float(len(self.hidden_weights))
-            return result
+            norm_w_posterior =  unnorm_w / sum_w
+
+            self.mean_w = unnorm_w
+            self.H = H_fit
+
+            return norm_w_posterior, w_fit, H_fit
+
+    def sample_weight_vector(self):
+        w_vec = self.mean_w
+        h_vec = self.H
+
+        if h_vec is None:
+            return w_vec
+        w_sample = []
+        for i in range(len(w_vec)):
+            stdev = 1.0 / math.sqrt(h_vec[i])
+            # print("stdev "+str(i)+" "+str(stdev))
+            ws = np.random.normal(w_vec[i], stdev)
+            w_sample.append(ws)
+        w_sample = np.array(w_sample)
+        return w_sample / sum(w_sample)
