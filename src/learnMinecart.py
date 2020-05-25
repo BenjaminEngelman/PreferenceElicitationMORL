@@ -26,7 +26,7 @@ if __name__ == "__main__":
         # env = DummyVecEnv([lambda: env])
         return env
 
-    n_envs = 8
+    n_envs = 1
     env = SubprocVecEnv([lambda i=i: make_env() for i in range(n_envs)])
 
 
@@ -53,8 +53,8 @@ if __name__ == "__main__":
                     learning_rate=3e-4,
                     gamma=0.99,
                     policy_kwargs={'net_arch': [{'vf': arch, 'pi': arch}]},
-                    full_tensorboard_log=True,
-                    tensorboard_log="src/tensorboard/",
+                    # full_tensorboard_log=True,
+                    # tensorboard_log="src/tensorboard/",
                     verbose=1,
         )
    

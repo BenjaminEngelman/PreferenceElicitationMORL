@@ -1,4 +1,6 @@
 import os
+import pickle
+import ternary
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.random import RandomState
@@ -29,6 +31,7 @@ class MultiObjRewardWrapper(gym.RewardWrapper):
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
 
     def reward(self, rew):
+        print(f"reward {self.weights.dot(rew)}")
         return self.weights.dot(rew)
 
 class CheckpointCallback(BaseCallback):
@@ -90,6 +93,8 @@ def argmax(l):
     return max(enumerate(l), key=lambda x: x[1])[0]
 
 
+
+
 def plot_compareMethods(experiemnt_id, distances_withComp, distances_withAbsRet, weights_withComp, weights_withAbsRet, optimal_weight, noise):
     f, axes = plt.subplots(nrows=1, ncols=2, figsize=(20,7))
     # Distances to optimal return
@@ -104,8 +109,8 @@ def plot_compareMethods(experiemnt_id, distances_withComp, distances_withAbsRet,
     axes[1].set_title("Weight estimate")
     axes[1].set_ylabel("W1 estimate")
 
-    axes[1].plot(weights_withComp, label="Comparaisons", marker='o')
-    axes[1].plot(weights_withAbsRet, label="Absolute return", marker='o')
+    axes[1].plot(np.array(weights_withComp)[:, 1], label="Comparaisons", marker='o')
+    axes[1].plot(np.array(weights_withAbsRet)[:, 1], label="Absolute return", marker='o')
     axes[1].hlines(optimal_weight[1], xmin=0, xmax=len(weights_withAbsRet), label="optimal")
     axes[1].legend()
 
@@ -131,18 +136,51 @@ def plot_experimentNoise(experiment_id, all_distances, std_distances, all_weight
     for w, std, noise_value in zip(all_weightsEstimates, std_weightsEstimates, noise_values):
         axes[1].errorbar(list(range(len(w))), w, yerr=std, label=noise_value, marker='o')
 
-    axes[1].hlines(optimal_weight, xmin=0, xmax=8, label="optimal")
+    axes[1].hlines(optimal_weight[1], xmin=0, xmax=8, label="optimal")
     axes[1].legend()
 
-    f.savefig(f"experiments/{experiemnt_id}/noise_{optimal_weight}_{method}.png")
+    f.savefig(f"experiments/{experiment_id}/noise_{optimal_weight}_{method}.png")
 
 
-def plot_weight_estimations(results, optimal_weight):
+def plot_weight_estimations(results, optimal_weights):
     weight_estimations = np.array(results["weights"])
-    plt.hlines(optimal_weight[1], xmin=0, xmax=len(weight_estimations), label="Optimal")
-    plt.plot(weight_estimations, marker='o', label="Estimation")
+    plt.hlines(optimal_weights[1], xmin=0, xmax=len(weight_estimations), label="Optimal")
+    plt.plot(np.array(weight_estimations)[:, 1], marker='o', label="Estimation")
     plt.legend()
     plt.show()
+
+def plot_on_ternary_map(results, optimal_weights, env_name):
+    weight_estimations = np.array(results["weights"])
+    if env_name == "synt":
+        with open('synthetic_pareto_front/pf.pickle', 'rb') as handle:
+            background_points = pickle.load(handle)
+    
+    # make the ternary plot
+    figure, tax = ternary.figure(scale=100)
+    figure.set_size_inches(10, 10)
+    for color in background_points:
+        tax.scatter(background_points[color])
+
+
+    # plot the weights
+
+    tax.plot(weight_estimations * 100, color="black", marker='o', label="Weights estimates")
+
+    tax.scatter([weight_estimations[0] * 100], marker="s", zorder=np.inf, color="black", label="Initial weights estimate", s=110)
+    # tax.scatter([weight_estimations[-1] * 100], marker="s", zorder=np.inf, color="black", label="Final estimation", s=120)
+    tax.scatter([np.array(optimal_weights) * 100], marker="X", zorder=np.inf, color="black", s=150, label="Optimal weights")
+
+    tax.legend()
+    tax.set_title("CCS", fontsize=20)
+    tax.boundary(linewidth=2.0)
+    tax.gridlines(multiple=5, color="blue")
+    tax.ticks(axis='lbr', linewidth=1, multiple=5)
+    tax.clear_matplotlib_ticks()
+    tax.left_axis_label("$w_2$", fontsize=20)
+    tax.right_axis_label("$w_1$", fontsize=20)
+    tax.bottom_axis_label("$w_0$", fontsize=20)
+    tax.get_axes().axis('off')
+    tax.show()
 
 
 
@@ -156,7 +194,7 @@ def get_best_sol(pareto_front, weights):
             best_u = utility(sol)
             best_sol = sol
 
-    return best_sol
+    return np.array(best_sol)
 
 
 def get_best_sol_BST(weights):
