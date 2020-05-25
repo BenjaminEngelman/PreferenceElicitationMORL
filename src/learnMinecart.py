@@ -66,16 +66,17 @@ if __name__ == "__main__":
     weights = np.array([float(x) for x in sys.argv[2:]])
     arch = [20, 20, 20]
 
-    def make_env():
+    def make_env(env_n):
         env = MinecartDeterministicEnv()
         env = MinecartObsWrapper(env)
         env = MultiObjRewardWrapper(env, weights)
         env = TimeLimit(env, max_episode_steps=10000)
+        env = CSVLogger(env, os.environ["OPENAI_LOGDIR" + f"{env_n}"])
         # env = DummyVecEnv([lambda: env])
         return env
 
     n_envs = 1
-    env = SubprocVecEnv([lambda i=i: make_env() for i in range(n_envs)])
+    env = SubprocVecEnv([lambda i=i: make_env(i) for i in range(n_envs)])
 
     if sys.argv[1] == "A2C":
         model = A2C(MlpPolicy,
