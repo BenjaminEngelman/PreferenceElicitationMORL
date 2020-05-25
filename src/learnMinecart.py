@@ -71,11 +71,11 @@ if __name__ == "__main__":
         env = MinecartObsWrapper(env)
         env = MultiObjRewardWrapper(env, weights)
         env = TimeLimit(env, max_episode_steps=10000)
-        env = CSVLogger(env, os.environ["OPENAI_LOGDIR" + f"{env_n}"])
+        env = CSVLogger(env, os.environ['OPENAI_LOGDIR'] + f'_{env_n}')
         # env = DummyVecEnv([lambda: env])
         return env
 
-    n_envs = 1
+    n_envs = 8
     env = SubprocVecEnv([lambda i=i: make_env(i) for i in range(n_envs)])
 
     if sys.argv[1] == "A2C":
