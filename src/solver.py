@@ -5,30 +5,29 @@ import matplotlib.pyplot as plt
 from src.agents import Qlearning
 from src.env import BountyfulSeaTreasureEnv
 from minecart.envs.minecart_env import MinecartDeterministicEnv
-from src.constants import STEPS_BST, STEPS_MINECART_COLD_START, STEPS_MINECART_HOT_START, N_STEPS_BEFORE_CHECKPOINT
+from src.constants import STEPS_BST, STEPS_MINECART_COLD_START, STEPS_MINECART_HOT_START, N_STEPS_BEFORE_CHECKPOINT, N_ENVS_A2C
 from src.utils import MinecartObsWrapper, MultiObjRewardWrapper, most_occuring_sublist
 from src.utils import get_best_sol, get_best_sol_BST, CheckpointCallback
 from src.ols.utils import create_3D_pareto_front
 
 
 from stable_baselines import A2C
-from stable_baselines.common.vec_env import DummyVecEnv
+from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines import A2C
 from gym.wrappers import TimeLimit
 import os
 
-A2C_ARCH = [64, 64]
+A2C_ARCH = [20, 20, 20]
 
 
 def get_pretrained_agents():
     agents = []
     dir_name = "saved_agents"
     for filename in os.listdir(dir_name):
-        if filename.split('_')[-1] == "checkpoint":
-            agent = A2C.load(dir_name + '/' + filename)
-            weights = np.array([float(w) for w in filename.split('_')[:-1]])
-            agents.append([weights, agent])
+        agent = A2C.load(dir_name + '/' + filename)
+        weights = np.array([float(w) for w in filename.split('_')])
+        agents.append([weights, agent])
 
     return agents
 
@@ -53,15 +52,15 @@ def build_SO_minecart(weights):
     env = MinecartDeterministicEnv()
     env = MinecartObsWrapper(env)
     env = MultiObjRewardWrapper(env, weights)
-    env = TimeLimit(env, max_episode_steps=1000)
-    env = DummyVecEnv([lambda: env])
+    env = TimeLimit(env, max_episode_steps=10000)
+    # env = DummyVecEnv([lambda: env])
     return env
 
 
 def build_MO_minecart():
     env = MinecartDeterministicEnv()
     env = MinecartObsWrapper(env)
-    env = TimeLimit(env, max_episode_steps=1000)
+    env = TimeLimit(env, max_episode_steps=10000)
     return env
 
 def highest_utility(results, w):
@@ -111,7 +110,7 @@ class Solver(object):
                     reward * np.power(agent.gamma, cnt)
                 cnt = cnt + 1
 
-            results.append(np.round(tot_reward_mo, 2))
+            results.append(tot_reward_mo)
 
         # Get the mode (the results observed the most)
         # res = most_occuring_sublist(results)
@@ -134,27 +133,28 @@ class Solver(object):
             return get_best_sol_BST(weights)
 
         elif env_name == "minecart":
-            n_eval_runs = 200
-            env = build_SO_minecart(weights)
+            n_eval_runs = 50
+
             trained_agents = get_pretrained_agents()
-            checkpoint_callback = CheckpointCallback(
-                num_steps=N_STEPS_BEFORE_CHECKPOINT,
-                save_path='saved_agents',
-                name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}'
-            )
+            # checkpoint_callback = CheckpointCallback(
+            #     num_steps=N_STEPS_BEFORE_CHECKPOINT,
+            #     save_path='saved_agents',
+            #     name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}'
+            # )
 
             # Train agent from scratch
             if len(trained_agents) == 0:
                 learning_steps = STEPS_MINECART_COLD_START
+                env = SubprocVecEnv([lambda i=i: build_SO_minecart(weights) for i in range(N_ENVS_A2C)])
                 agent = A2C(MlpPolicy,
                             env,
                             vf_coef=0.5,
                             ent_coef=0.01,
-                            n_steps=500,
+                            n_steps=500//N_ENVS_A2C,
                             max_grad_norm=50,
                             # clip_loss_value=100,
                             learning_rate=3e-4,
-                            gamma=0.98,
+                            gamma=0.99,
                             policy_kwargs={'net_arch': [
                                 {'vf': A2C_ARCH, 'pi': A2C_ARCH}]},
                             # tensorboard_log="src/tensorboard/"
@@ -167,28 +167,29 @@ class Solver(object):
 
                 # If the most similar agent was trained for the same weights
                 # we don't need to learn()
+
                 if list(most_similar_weights) == list(weights):
-                    fully_trained_agent = A2C.load(
-                        f'saved_agents/{weights[0]}_{weights[1]}_{weights[2]}')
-                    returns = self.eval_agent(fully_trained_agent, env_name, weights)
+                    fully_trained_agent = A2C.load(f'saved_agents/{most_similar_weights[0]}_{most_similar_weights[1]}_{most_similar_weights[2]}')
+                    returns = self.eval_agent(fully_trained_agent, env_name, weights, n_runs=n_eval_runs)
                     return returns
                 else:
+                    env = SubprocVecEnv([lambda i=i: build_SO_minecart(weights) for i in range(N_ENVS_A2C)])
                     agent = A2C(MlpPolicy,
                                 env,
                                 vf_coef=0.5,
                                 ent_coef=0.01,
-                                n_steps=500,
+                                n_steps=500//N_ENVS_A2C,
                                 max_grad_norm=50,
                                 # clip_loss_value=100,
                                 learning_rate=3e-4,
-                                gamma=0.98,
+                                gamma=0.99,
                                 policy_kwargs={'net_arch': [
                                     {'vf': A2C_ARCH, 'pi': A2C_ARCH}]},
                                 # tensorboard_log="src/tensorboard/"
                                 )
 
         if env_name == "minecart":
-            agent.learn(learning_steps, callback=checkpoint_callback)
+            agent.learn(int(learning_steps))#, callback=checkpoint_callback)
             agent.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
         else:
             agent.learn(learning_steps)
