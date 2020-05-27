@@ -14,6 +14,8 @@
 #     [175, -19],
 # ]
 
+MATPLOTLIB_COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink", "tab:gray", "tab:olive", "tab:cyan"]
+
 GAMMA_BST = 0.95
 
 BST_MAX_TREASURE = 100 * GAMMA_BST**19
@@ -37,7 +39,7 @@ BST_DIRECTIONS = ["U", "R", "D", "L"]
 # Learning constants
 STEPS_BST = 110_000
 
-STEPS_MINECART_COLD_START = 50_000_000
+STEPS_MINECART_COLD_START = 70_000_000
 N_STEPS_BEFORE_CHECKPOINT = 15_000_000
 STEPS_MINECART_HOT_START = 65_000_000
 N_ENVS_A2C = 8
@@ -90,7 +92,7 @@ WEIGHTS_NOISE_BST = [
     [0.1, 0.9]
 ]
 
-WEIGHTS_NOISE_MINECART = [
+WEIGHTS_EXP_MINECART = [
     [0.8, 0.0, 0.2],
     [0.0, 0.9, 0.1],
     [0.1, 0.0, 0.9]

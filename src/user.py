@@ -3,6 +3,8 @@ import numpy as np
 import sys
 from src.constants import BST_SOLUTIONS
 from src.utils import get_best_sol_BST
+from src.ols.utils import create_3D_pareto_front
+
 from scipy import stats
 import math
 
@@ -10,14 +12,13 @@ sys.path.insert(0, '..')
 
 
 class User(object):
-    def __init__(self, num_objectives=2, std_noise=0.001, random_state=None, weights=None):
+    def __init__(self, num_objectives=2, noise_pct=0.1, env=None, random_state=None, weights=None):
         # Hack to normalize utilites to 0 - 1 range
         # This works only for the BountyfulSeaTreasureEnv
         # TODO: Find another way to normalize that is not hardcoded.
 
         self.random_state = random_state
         self.num_objectives = num_objectives
-        self.std_noise = std_noise
 
         # Save all comparaisons between policies
         # As well as their outcomes (i.e preferences)
@@ -32,25 +33,29 @@ class User(object):
             self.hidden_weights = self.random_state.uniform(0.0, 1, num_objectives)
             self.hidden_weights /= np.sum(self.hidden_weights)
         
+        # Trick to add noise in % to the utilites
+        # Deep sea treasure
         if self.num_objectives == 2:
-            self.utilities = [self.hidden_weights[0] * sol[0] + self.hidden_weights[1] * sol[1] for sol in BST_SOLUTIONS]
-            # print("UTILITIES")
-            # print(self.utilities)
+            utilities = [self.hidden_weights[0] * sol[0] + self.hidden_weights[1] * sol[1] for sol in BST_SOLUTIONS]
+        
+        # Synt 3 obj
+        elif (self.num_objectives == 3) and (env != "minecart"):
+            utilities = [self.hidden_weights[0] * sol[0] + self.hidden_weights[1] * sol[1] + self.hidden_weights[2] * sol[2] for sol in create_3D_pareto_front()]
+
+        # Minecart
+        else:
+            utilities = [1.11, -1]
+
+
+        utility_range = max(utilities) - min(utilities)
+        self.std_noise = (noise_pct / 100) * utility_range
+        
 
     def get_utility(self, values, with_noise=True):
         noise = self.random_state.normal(0, self.std_noise)
         utility = 0
         for i in range(self.num_objectives):
             utility += values[i] * self.hidden_weights[i]
-        # print("UTILITY")
-        # if self.num_objectives == 2:
-        #     # Normalise
-        #     utility  = (utility - min(self.utilities)) / (max(self.utilities) - min(self.utilities))
-        #     utility = np.clip(utility, 0, 1)
-        #     utility *= 10
-        # print("NORM UTILITY")
-        # print(utility)
-        # print()
         if with_noise:
             utility += noise
         
@@ -86,16 +91,34 @@ class User(object):
 
     def current_map(self, weights=None):
         if len(self.outcomes) > 0:
-            w_prior = np.ones(len(self.hidden_weights)) / \
-                len(self.hidden_weights)
-            # w_prior = weights
-            H_prior_diag = np.ones(
-                len(self.hidden_weights)) * (1.0 / 0.33) ** 2
-            w_fit, H_fit = bl.fit_bayes_logistic(np.array(self.outcomes),
-                                                 np.array(self.comparisons),
-                                                 w_prior,
-                                                 H_prior_diag,
-                                                 )
+            
+            bnd = (0, 1)
+            bnd_list = []
+            for _ in np.arange(self.num_objectives):
+                bnd_list.append(bnd)
+
+            if weights is not None:
+                # w_prior = weights
+                w_prior = np.ones(len(self.hidden_weights)) / len(self.hidden_weights)
+
+
+            else:
+                w_prior = np.ones(len(self.hidden_weights)) / len(self.hidden_weights)
+                # w_prior = np.zeros(self.num_objectives)
+
+
+            # H_prior_diag = np.ones(self.num_objectives)*0.05
+            H_prior_diag = np.ones(len(self.hidden_weights)) * (1.0 / 0.33)  ** 2
+            # H_prior_diag = np.array([2] * self.num_objectives)
+
+            w_fit, H_fit = bl.fit_bayes_logistic(
+                np.array(self.outcomes),
+                np.array(self.comparisons),
+                w_prior,
+                H_prior_diag,
+            )
+            # print(1 / H_fit)
+
             # print(samples) 
             # exit()
 

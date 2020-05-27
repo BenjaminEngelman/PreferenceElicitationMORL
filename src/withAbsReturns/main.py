@@ -12,6 +12,8 @@ from src.user import User
 from scipy.optimize import minimize, lsq_linear
 import matplotlib.pyplot as plt
 
+N_STEPS = 5
+
 
 def estimateWeightsOpti(X, y, current_estimate=None):
     """
@@ -75,24 +77,29 @@ def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
     X, y = [], []
 
     # We start with an estimate of the weights weights
-    weights = np.ones(n_obj) / n_obj
+    if env_name in ["synt", "minecart"]:
+        weights = np.array([0.75, 0.1, 0.15])
+    else:
+        weights = np.ones(n_obj) / n_obj
 
 
     it = 0
-    while it < 6:# or not (np.abs(prev_weights - weights)<epsilon).all():
+    while it < N_STEPS:# or not (np.abs(prev_weights - weights)<epsilon).all():
         logging.info("Iteration %d" % it)
         logging.info("Current weights estimates: " + str(weights))
 
-        # Solve the environement for some random weights
-        w_to_solve = random_state.uniform(0.0, 1, n_obj)
-        w_to_solve /= np.sum(w_to_solve)
+        # # Solve the environement for some random weights
+        # w_to_solve = random_state.uniform(0.0, 1, n_obj)
+        # w_to_solve /= np.sum(w_to_solve)
+        w_to_solve = weights
 
         returns = solver.solve(env_name, w_to_solve, random_state=random_state)
         logging.info("Returns for the weights " + str(w_to_solve) + ": " + str(returns))
 
-        logs["weights"].append(weights[1])
+        logs["weights"].append(weights)
         # Solve the env for the current weight estimate and add to logs
-        logs["returns"].append(solver.solve(env_name, weights, random_state=random_state)) # Log the returns for the current weight estimate
+        # logs["returns"].append(solver.solve(env_name, weights, random_state=random_state)) # Log the returns for the current weight estimate
+        logs["returns"].append(returns) # Log the returns for the current weight estimate
 
 
         # Get a noisy estimate of the user utility
@@ -104,15 +111,19 @@ def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
         X.append(np.array(returns))
         y.append(u)
 
-        # Estimate new weights
-        prev_weights = weights
-        if method == "opti":
-            weights = estimateWeightsOpti(X, y, current_estimate=weights)
+        # if env with 3 objectives
+        # don't update weights after first iteration
+        # start after the second
+        if env_name in ["synt_bst", "bst"] or it > 0:
+            if method == "opti":
+                weights = estimateWeightsOpti(X, y, current_estimate=weights)
 
-        elif method == "reg":
-            weights = estimateWeightsReg(X, y)
+            elif method == "reg":
+                weights = estimateWeightsReg(X, y)
+            else:
+                print("Wrong method.")
         else:
-            print("Wrong method.")
+            weights = np.array([0.1, 0.5, 0.4])
         
         # history.append(weights[0])
 
@@ -130,15 +141,23 @@ def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
 
 
 if __name__ == "__main__":
-    from src.utils import plot_weight_estimations
+    from src.utils import plot_weight_estimations, plot_on_ternary_map, plot_2d_run
     ts = datetime.datetime.now().timestamp()
     logging.basicConfig(
         format='%(message)s', filename=f'src/withAbsReturns/logs/experiment_{ts}.log', level=logging.INFO)
 
     seed = 1
     rs = RandomState(seed)
-    user_w = [0.9, 0.1, 0.0]
-    user = User(num_objectives=3, std_noise=0.001, random_state=rs, weights=user_w)
-    logs = findWeightsWithAbsReturns(user, env_name="3d_synthetic", seed=seed)
-    plot_weight_estimations(logs, user_w)
+    # user_w = [0.9, 0.1, 0.0]
+    # user = User(num_objectives=3, noise_pct=0.001, random_state=rs, weights=user_w)
+    # logs = findWeightsWithAbsReturns(user, env_name="3d_synthetic", seed=seed)
+    # plot_weight_estimations(logs, user_w)
 
+    # user_w = [0.3, 0.3, 0.4] 
+    user_w = [0.2, 0.8] 
+
+    env_name = "synt_bst"
+    user = User(num_objectives=2, noise_pct=50, random_state=rs, weights=user_w)
+    logs = findWeightsWithAbsReturns(user, env_name=env_name, seed=seed)
+    plot_2d_run(logs, user_w)
+    # plot_on_ternary_map(logs, user_w, env_name)

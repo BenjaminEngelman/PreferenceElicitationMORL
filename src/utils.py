@@ -6,6 +6,7 @@ import numpy as np
 from numpy.random import RandomState
 from mpl_toolkits.mplot3d import axes3d
 import gym
+from src.constants import MATPLOTLIB_COLORS
 from gym import spaces
 from stable_baselines.common.policies import FeedForwardPolicy, register_policy
 from stable_baselines.common.callbacks import BaseCallback
@@ -157,20 +158,31 @@ def plot_on_ternary_map(results, optimal_weights, env_name, method=None, experim
     
     # make the ternary plot
     figure, tax = ternary.figure(scale=100)
-    figure.set_size_inches(10, 10)
-    for color in background_points:
-        tax.scatter(background_points[color])
+    # figure.set_size_inches(10, 10)
+    scatters = []
+    for solution_index in background_points:
+        sol, scatter_points = background_points[solution_index]
+
+        # Round and plot
+        float_formatter = "{:.2f}".format
+        utility = float_formatter(np.dot(optimal_weights, np.array(sol)))
+        sol = [float_formatter(x) for x in sol]
+        scatter = tax.scatter(scatter_points, s=200, label=f"Solution: {sol}\nUtility: {utility}")
+        scatters.append(scatter)
+    
+    figure.legend(handles=scatters, loc='lower center', frameon=True, fontsize=11, ncol=5)
 
 
     # plot the weights
-
     tax.plot(weight_estimations * 100, color="black", marker='o', label="Weights estimates")
 
     tax.scatter([weight_estimations[0] * 100], marker="s", zorder=np.inf, color="black", label="Initial weights estimate", s=110)
     # tax.scatter([weight_estimations[-1] * 100], marker="s", zorder=np.inf, color="black", label="Final estimation", s=120)
     tax.scatter([np.array(optimal_weights) * 100], marker="X", zorder=np.inf, color="black", s=150, label="Optimal weights")
+    
+    # figure.legend(handles = others, loc='upper right', frameon=True, fontsize=11, ncol=1)
 
-    tax.legend()
+
     tax.set_title("CCS", fontsize=20)
     tax.boundary(linewidth=2.0)
     tax.gridlines(multiple=5, color="blue")
@@ -185,6 +197,48 @@ def plot_on_ternary_map(results, optimal_weights, env_name, method=None, experim
     else:
         tax.savefig(f"experiments/{experiment_id}/{optimal_weights}_{method}.png")
 
+
+
+def plot_2d_run(results, optimal_weights):
+   
+    weight_estimations = np.array(results["weights"])
+    trace = np.array(weight_estimations)[:, 1]
+
+    num_iter = len(weight_estimations)
+    y = np.arange(0, num_iter + 1, 0.01)
+    weights_line = np.arange(0, 1.01, 0.01)
+
+    figure, ax = plt.subplots(figsize=(15, 10))
+
+    for i, sol in enumerate(BST_SOLUTIONS):
+        float_formatter = "{:.2f}".format
+        utility = float_formatter(np.dot(optimal_weights, np.array(sol)))
+        sol_string = [float_formatter(x) for x in sol]
+        
+        plt.scatter([], [], c=MATPLOTLIB_COLORS[i], label=f"Solution: {sol_string} \nUtility: {utility}")
+        
+        for time_weight in weights_line:
+            full_weight = [1-time_weight, time_weight]
+            
+            if list(get_best_sol_BST(full_weight)) == sol:
+                plt.scatter(x=[time_weight]*len(y), y=y, c=MATPLOTLIB_COLORS[i], s=120)
+
+    plt.axvline(optimal_weights[1], 0, num_iter, linestyle="dashed", color="black")
+
+
+    plt.xlim(xmin = 0, xmax=1)
+    plt.ylim(ymin = -0.04, ymax=num_iter + 0.05)
+    plt.yticks(list(range(len(trace))))
+    plt.xlabel("$w_1$")
+    plt.ylabel("iteration")
+
+    plt.plot(trace, list(range(len(trace))), marker='o', color="black")
+
+    figure.tight_layout()
+    figure.subplots_adjust(bottom=0.16)  
+    figure.legend(loc='lower center', frameon=True, fontsize=11, ncol=5)
+    plt.show()
+    
 
 
 
