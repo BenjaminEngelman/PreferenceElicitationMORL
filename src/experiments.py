@@ -230,6 +230,8 @@ def absolute_minecart(exp_name):
     env_name = "minecart"
 
     for weights in WEIGHTS_EXP_MINECART:
+        weights = np.array(weights)
+        
         solver = Solver()
         optimal_returns = solver.solve(env_name, weights, random_state)
         
