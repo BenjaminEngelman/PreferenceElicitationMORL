@@ -99,6 +99,6 @@ if __name__ == "__main__":
         exit()
 
     # checkpoint_callback = CheckpointCallback(num_steps=15_000_000, save_path='./saved_agents', name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}')
-    model.learn(total_timesteps=int(5e7))
-    model.save("test_parallel")
-    # model.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
+    model.learn(total_timesteps=int(12e7))
+    # model.save("test_parallel")
+    model.save(f"{weights[0]}_{weights[1]}_{weights[2]}_12e7_steps")
