@@ -1,8 +1,6 @@
 from src.ols.main_2_objectives import ols
-from src.agents import MOQlearning
 from src.env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
 from numpy.random import RandomState
-from minecart.envs.minecart import Minecart
 
 
 
@@ -10,7 +8,7 @@ def run_BST():
     """
     Run OLS on Boutyfull Sea Treasure
     """
-    env = BountyfulSeaTreasureEnv()
+    env = "synt_bst"
     random_state = RandomState(42)
 
     ols(env, random_state)

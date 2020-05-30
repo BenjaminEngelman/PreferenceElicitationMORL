@@ -12,7 +12,7 @@ from src.user import User
 from scipy.optimize import minimize, lsq_linear
 import matplotlib.pyplot as plt
 
-N_STEPS = 5
+N_STEPS = 4
 
 
 def estimateWeightsOpti(X, y, current_estimate=None):
@@ -65,7 +65,6 @@ def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
 
     # Setup of the environment and agent
     n_obj = user.num_objectives
-    solver = Solver() # Used to train and evaluate the agent on the environements
     logs = {
         "returns": [],
         "weights": []
@@ -84,7 +83,9 @@ def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
 
 
     it = 0
-    while it < N_STEPS:# or not (np.abs(prev_weights - weights)<epsilon).all():
+    while it < N_STEPS:
+        solver = Solver() # Used to train and evaluate the agent on the environements
+
         logging.info("Iteration %d" % it)
         logging.info("Current weights estimates: " + str(weights))
 
