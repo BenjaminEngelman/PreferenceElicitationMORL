@@ -12,6 +12,8 @@ from stable_baselines.common import make_vec_env
 from gym.wrappers import TimeLimit
 from stable_baselines.common import make_vec_env
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
+from stable_baselines.common.callbacks import CheckpointCallback
+
 import csv
 import os
 import gym
@@ -98,7 +100,9 @@ if __name__ == "__main__":
         print("Wrong method")
         exit()
 
-    # checkpoint_callback = CheckpointCallback(num_steps=15_000_000, save_path='./saved_agents', name_prefix=f'{weights[0]}_{weights[1]}_{weights[2]}')
-    model.learn(total_timesteps=int(12e7))
-    # model.save("test_parallel")
+    checkpoint_callback = CheckpointCallback(
+        save_freq=int(10e6), save_path='checkpoints/',
+        name_prefix=str(uuid.uuid4())[:4]
+    )    
+    model.learn(total_timesteps=int(12e7), callback=checkpoint_callback)
     model.save(f"{weights[0]}_{weights[1]}_{weights[2]}_12e7_steps")
