@@ -32,7 +32,19 @@ class MultiObjRewardWrapper(gym.RewardWrapper):
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(6,))
 
     def reward(self, rew):
-        # print(f"reward {self.weights.dot(rew)}")
+        return self.weights.dot(rew)
+
+class MinecartLessFuelMultiObjRewardWrapper(MultiObjRewardWrapper):
+    """
+    Divide the Fuel objective by 10 to give it less importance
+    """
+    def __init__(self, env, weights):
+        super().__init__(env, weights)
+
+
+    def reward(self, rew):
+        # Decrease the importance of the fuel by 10
+        rew[2] = rew[2] / 10
         return self.weights.dot(rew)
 
 class CheckpointCallback(BaseCallback):
@@ -155,10 +167,12 @@ def plot_on_ternary_map(results, optimal_weights, env_name, method=None, experim
     if env_name == "synt":
         with open('synthetic_pareto_front/pf.pickle', 'rb') as handle:
             background_points = pickle.load(handle)
+    else:
+        background_points = []
     
     # make the ternary plot
     figure, tax = ternary.figure(scale=100)
-    # figure.set_size_inches(10, 10)
+    figure.set_size_inches(18, 12)
     scatters = []
     for solution_index in background_points:
         sol, scatter_points = background_points[solution_index]
@@ -170,7 +184,7 @@ def plot_on_ternary_map(results, optimal_weights, env_name, method=None, experim
         scatter = tax.scatter(scatter_points, s=200, label=f"Solution: {sol}\nUtility: {utility}")
         scatters.append(scatter)
     
-    figure.legend(handles=scatters, loc='lower center', frameon=True, fontsize=11, ncol=5)
+    figure.legend(loc='lower center', frameon=True, fontsize=11, ncol=5)
 
 
     # plot the weights
@@ -199,9 +213,10 @@ def plot_on_ternary_map(results, optimal_weights, env_name, method=None, experim
 
 
 
-def plot_2d_run(results, optimal_weights):
+def plot_2d_run(results, optimal_weights, method=None, experiment_id=None):
    
     weight_estimations = np.array(results["weights"])
+    stds =  np.array(results["stds"])[:, 1]
     trace = np.array(weight_estimations)[:, 1]
 
     num_iter = len(weight_estimations)
@@ -210,11 +225,10 @@ def plot_2d_run(results, optimal_weights):
 
     figure, ax = plt.subplots(figsize=(15, 10))
 
-    for i, sol in enumerate(BST_SOLUTIONS):
+    for i, sol in enumerate(BST_SOLUTIONS[::-1]):
         float_formatter = "{:.2f}".format
         utility = float_formatter(np.dot(optimal_weights, np.array(sol)))
         sol_string = [float_formatter(x) for x in sol]
-        
         plt.scatter([], [], c=MATPLOTLIB_COLORS[i], label=f"Solution: {sol_string} \nUtility: {utility}")
         
         for time_weight in weights_line:
@@ -232,12 +246,19 @@ def plot_2d_run(results, optimal_weights):
     plt.xlabel("$w_1$")
     plt.ylabel("iteration")
 
-    plt.plot(trace, list(range(len(trace))), marker='o', color="black")
+    # plt.plot(trace, list(range(len(trace))), marker='o', color="black")
+    plt.errorbar(trace, list(range(len(trace))), xerr=stds, marker='o', color="black", capsize=3)
+
 
     figure.tight_layout()
     figure.subplots_adjust(bottom=0.16)  
     figure.legend(loc='lower center', frameon=True, fontsize=11, ncol=5)
-    plt.show()
+    
+    if experiment_id == None:
+        plt.show()
+    else:
+        plt.savefig(f"experiments/{experiment_id}/{optimal_weights}_{method}.png")
+
     
 
 
