@@ -105,4 +105,4 @@ if __name__ == "__main__":
         name_prefix=str(uuid.uuid4())[:4]
     )    
     model.learn(total_timesteps=int(12e7), callback=checkpoint_callback)
-    model.save(f"saved_agents/{weights[0]}_{weights[1]}_{weights[2]}")
+    model.save(f"saved_agents_2/{weights[0]}_{weights[1]}_{weights[2]}")
