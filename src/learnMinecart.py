@@ -71,7 +71,7 @@ if __name__ == "__main__":
     def make_env(env_n):
         env = MinecartDeterministicEnv()
         env = MinecartObsWrapper(env)
-        env = MinecartLessFuelMultiObjRewardWrapper(env, weights)
+        env = MultiObjRewardWrapper(env, weights)
         env = TimeLimit(env, max_episode_steps=1000)
         env = CSVLogger(env, os.environ['OPENAI_LOGDIR'] + f'_{env_n}')
         # env = DummyVecEnv([lambda: env])
