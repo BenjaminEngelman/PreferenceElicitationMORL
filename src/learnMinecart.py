@@ -77,10 +77,13 @@ if __name__ == "__main__":
         # env = DummyVecEnv([lambda: env])
         return env
 
-    n_envs = 16
-    env = SubprocVecEnv([lambda i=i: make_env(i) for i in range(n_envs)])
+
+    n_envs = 2
+
 
     if sys.argv[1] == "A2C":
+        env = SubprocVecEnv([lambda i=i: make_env(i) for i in range(n_envs)])
+
         model = A2C(MlpPolicy,
                     env,
                     vf_coef=0.5,
@@ -96,13 +99,41 @@ if __name__ == "__main__":
                     # verbose=1,
         )
 
+        checkpoint_callback = CheckpointCallback(
+        save_freq=int(625e5), save_path='checkpoints/',
+        name_prefix=str(uuid.uuid4())[:4]
+        )
+
+    elif sys.argv[1] == "DQN":
+        env = make_env(0)
+        env = DummyVecEnv([lambda: env])
+
+        model = DQN(
+            DQNMlpPolicy,
+            env,
+            verbose=1,
+            # train_freq=500,
+            # tensorboard_log="src/tensorboard/",
+            gamma=0.98,
+            prioritized_replay=True,
+            policy_kwargs={'layers': arch},
+            learning_rate=3e-4,
+            # exploration_final_eps=0.01,
+
+        )   
+
+        checkpoint_callback = CheckpointCallback(
+        save_freq=int(10e6), save_path='checkpoints/',
+        name_prefix=str(uuid.uuid4())[:4]
+        )
+
     else:
         print("Wrong method")
         exit()
 
-    checkpoint_callback = CheckpointCallback(
-        save_freq=int(625e5), save_path='checkpoints/',
-        name_prefix=str(uuid.uuid4())[:4]
-    )    
+    # checkpoint_callback = CheckpointCallback(
+    #     save_freq=int(625e5), save_path='checkpoints/',
+    #     name_prefix=str(uuid.uuid4())[:4]
+    # )
     model.learn(total_timesteps=int(12e7), callback=checkpoint_callback)
-    model.save(f"saved_agents_2/{weights[0]}_{weights[1]}_{weights[2]}")
+    model.save(f"saved_agents_DQN/{weights[0]}_{weights[1]}_{weights[2]}")
