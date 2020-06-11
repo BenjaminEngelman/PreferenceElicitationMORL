@@ -61,7 +61,7 @@ if __name__ == "__main__":
     import uuid
     # configure logging dir and type
     os.environ['OPENAI_LOG_FORMAT'] = 'stdout,log,csv'
-    os.environ['OPENAI_LOGDIR'] = f'runs/A2C_{str(uuid.uuid4())[:4]}'
+    os.environ['OPENAI_LOGDIR'] = f'runs/A2C_{str(uuid.uuid4())[:4]}_{weights}'
     # configure logger
     configure()
 
@@ -124,7 +124,7 @@ if __name__ == "__main__":
 
         checkpoint_callback = CheckpointCallback(
         save_freq=int(10e6), save_path='checkpoints/',
-        name_prefix=str(uuid.uuid4())[:4]
+        name_prefix=str(uuid.uuid4())[:4] + str(weights)
         )
 
     else:
