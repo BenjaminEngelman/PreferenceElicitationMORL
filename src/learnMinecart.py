@@ -59,14 +59,15 @@ class CSVLogger(gym.Wrapper):
 if __name__ == "__main__":
 
     import uuid
+
+    weights = np.array([float(x) for x in sys.argv[2:]])
+    arch = [20, 20, 20]
+
     # configure logging dir and type
     os.environ['OPENAI_LOG_FORMAT'] = 'stdout,log,csv'
     os.environ['OPENAI_LOGDIR'] = f'runs/A2C_{str(uuid.uuid4())[:4]}_{weights}'
     # configure logger
     configure()
-
-    weights = np.array([float(x) for x in sys.argv[2:]])
-    arch = [20, 20, 20]
 
     def make_env(env_n):
         env = MinecartDeterministicEnv()
