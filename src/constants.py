@@ -14,10 +14,32 @@
 #     [175, -19],
 # ]
 
-MATPLOTLIB_COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown", "tab:pink", "tab:gray", "tab:olive", "tab:cyan"]
+MATPLOTLIB_COLORS = [
+    "tab:blue",
+    "tab:orange",
+    "tab:green",
+    "tab:red",
+    "tab:purple",
+    "tab:brown",
+    "tab:pink",
+    "tab:gray",
+    "tab:olive",
+    "tab:cyan",
+    "gray",
+    "lightcoral",
+    "gold",
+    "lime",
+    "navy",
+    "olivedrab",
+    "mistyrose",
+    "sandybrown",
+    "black",
+    "blueviolet",
+]
 
 N_OBJ = {
     "synt": 3,
+    "synt_20": 3,
     "minecart": 3,
     "bst": 2,
     "synt_bst": 2
@@ -28,17 +50,20 @@ GAMMA_BST = 0.95
 BST_MAX_TREASURE = 100 * GAMMA_BST**19
 BST_MAX_TIME = sum([-1 * GAMMA_BST**i for i in range(20)])
 
+BST_MIN_TREASURE = 18 * GAMMA_BST**1
+BST_MIN_TIME = sum([-1 * GAMMA_BST**i for i in range(1)])
+
 BST_SOLUTIONS = [
-    [18 * GAMMA_BST**1, sum([-1 * GAMMA_BST**i for i in range(1)])],
-    [26 * GAMMA_BST**2, sum([-1 * GAMMA_BST**i for i in range(2)])],
-    [31 * GAMMA_BST**3, sum([-1 * GAMMA_BST**i for i in range(3)])],
-    [44 * GAMMA_BST**6, sum([-1 * GAMMA_BST**i for i in range(6)])],
-    [48.2 * GAMMA_BST**7, sum([-1 * GAMMA_BST**i for i in range(7)])],
-    [56 * GAMMA_BST**9, sum([-1 * GAMMA_BST**i for i in range(9)])],
-    [72 * GAMMA_BST**13, sum([-1 * GAMMA_BST**i for i in range(13)])],
-    [76.3 * GAMMA_BST**14, sum([-1 * GAMMA_BST**i for i in range(14)])],
-    [90 * GAMMA_BST**17, sum([-1 * GAMMA_BST**i for i in range(17)])],
-    [100 * GAMMA_BST**19, sum([-1 * GAMMA_BST**i for i in range(19)])],
+    [18 * GAMMA_BST**1, sum([-1 * GAMMA_BST**i for i in range(2)])],
+    [26 * GAMMA_BST**2, sum([-1 * GAMMA_BST**i for i in range(3)])],
+    [31 * GAMMA_BST**3, sum([-1 * GAMMA_BST**i for i in range(4)])],
+    [44 * GAMMA_BST**6, sum([-1 * GAMMA_BST**i for i in range(7)])],
+    [48.2 * GAMMA_BST**7, sum([-1 * GAMMA_BST**i for i in range(8)])],
+    [56 * GAMMA_BST**9, sum([-1 * GAMMA_BST**i for i in range(10)])],
+    [72 * GAMMA_BST**13, sum([-1 * GAMMA_BST**i for i in range(14)])],
+    [76.3 * GAMMA_BST**14, sum([-1 * GAMMA_BST**i for i in range(15)])],
+    [90 * GAMMA_BST**17, sum([-1 * GAMMA_BST**i for i in range(18)])],
+    [100 * GAMMA_BST**19, sum([-1 * GAMMA_BST**i for i in range(20)])],
 ]
 
 BST_DIRECTIONS = ["U", "R", "D", "L"]
