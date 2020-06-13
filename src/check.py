@@ -35,7 +35,7 @@ for i, weights in enumerate(all_weights):#WEIGHTS_COMP_BST:
     optimal_returns = get_best_sol_BST(weights)
     returns = solver.solve("bst", weights, random_state=random_state)
 
-    res[i] = {"opt": optimal_returns, "ret": returns}
+    res[i] = {"w": weights, "opt": optimal_returns, "ret": returns}
 
     with open(f'experiments/bst/results.pickle', 'wb') as handle:
         pickle.dump(res, handle, protocol=pickle.HIGHEST_PROTOCOL)
