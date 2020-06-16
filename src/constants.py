@@ -1,18 +1,4 @@
-# BST_MAX_TREASURE = 173
-# BST_MAX_TIME = -17
-
-# BST_SOLUTIONS = [
-#     [5, -1],
-#     [80, -3],
-#     [120, -5],
-#     [140, -7],
-#     [145, -8],
-#     [150, -9],
-#     [163, -13],
-#     [166, -14],
-#     [173, -17],
-#     [175, -19],
-# ]
+###################### PLOTTING ######################
 
 MATPLOTLIB_COLORS = [
     "tab:blue",
@@ -45,6 +31,9 @@ N_OBJ = {
     "synt_bst": 2
 }
 
+###################### DEEP SEA TREASURE ######################
+
+
 GAMMA_BST = 0.95
 
 BST_MAX_TREASURE = 100 * GAMMA_BST**19
@@ -68,7 +57,19 @@ BST_SOLUTIONS = [
 
 BST_DIRECTIONS = ["U", "R", "D", "L"]
 
-# Learning constants
+###################### MINECART ######################
+
+MINECART_MINES_POS = [
+    (0.16, 0.84),
+    (0.5, 0.84),
+    (0.84, 0.84),
+    (0.84, 0.5),
+    (0.84, 0.16),
+]
+
+
+###################### LEARNING ######################
+
 STEPS_BST = 110_000
 
 STEPS_MINECART_COLD_START = 100_000_000
@@ -77,7 +78,7 @@ STEPS_MINECART_HOT_START = 65_000_000
 N_ENVS_A2C = 16
 
 
-# Experiments constants
+###################### EXPERIMENTS ######################
 
 # Each of those weights have another optimal solution for 
 # syntetic PF created by create_3D_pareto_front() in src.ols.utils

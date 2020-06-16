@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     # configure logging dir and type
     os.environ['OPENAI_LOG_FORMAT'] = 'stdout,log,csv'
-    os.environ['OPENAI_LOGDIR'] = f'runs/A2C_{str(uuid.uuid4())[:4]}_{weights}'
+    os.environ['OPENAI_LOGDIR'] = f'runs/A2C_{str(uuid.uuid4())[:4]}_{weights}_{sys.argv[5]}'
     # configure logger
     configure()
 
@@ -102,7 +102,7 @@ if __name__ == "__main__":
 
         checkpoint_callback = CheckpointCallback(
         save_freq=int(625e5), save_path='checkpoints/',
-        name_prefix=str(uuid.uuid4())[:4] + str(weights)
+        name_prefix=str(uuid.uuid4())[:4] + str(weights) + sys.argv[5]
         )
 
     # elif sys.argv[1] == "DQN":
@@ -137,4 +137,4 @@ if __name__ == "__main__":
     #     name_prefix=str(uuid.uuid4())[:4]
     # )
     model.learn(total_timesteps=int(12e7), callback=checkpoint_callback)
-    model.save(f"saved_agents_DQN/{weights[0]}_{weights[1]}_{weights[2]}")
+    model.save(f"saved_agents_DQN/{weights[0]}_{weights[1]}_{weights[2]}_{sys.argv[5]}")
