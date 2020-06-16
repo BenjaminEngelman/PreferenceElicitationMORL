@@ -10,8 +10,11 @@ from src.constants import MATPLOTLIB_COLORS
 from gym import spaces
 from stable_baselines.common.policies import FeedForwardPolicy, register_policy
 from stable_baselines.common.callbacks import BaseCallback
-from src.constants import BST_SOLUTIONS
+from src.constants import BST_SOLUTIONS, MINECART_MINES_POS
 from collections import Counter
+import matplotlib
+matplotlib.rcParams.update({'font.size': 22})
+
 
 
 class MinecartObsWrapper(gym.ObservationWrapper):
@@ -34,18 +37,23 @@ class MultiObjRewardWrapper(gym.RewardWrapper):
     def reward(self, rew):
         return self.weights.dot(rew)
 
-class MinecartLessFuelMultiObjRewardWrapper(MultiObjRewardWrapper):
-    """
-    Divide the Fuel objective by 10 to give it less importance
-    """
-    def __init__(self, env, weights):
+class MinecartMultiObjRewardWrapper(MultiObjRewardWrapper):
+
+
+    def __init__(self, env, weights, penalty_fac):
         super().__init__(env, weights)
+        self.penalty_fac = penalty_fac
 
 
     def reward(self, rew):
-        # Decrease the importance of the fuel by 10
-        rew[2] = rew[2] / 10
-        return self.weights.dot(rew)
+        cart_pos = self.cart.pos
+        dist2mines = [euclidian_distance(cart_pos, mine_pos) for mine_pos in MINECART_MINES_POS]
+        mean_dist = np.mean(dist2mines)
+        # print(rew[0], rew[1], rew[2], PENALTY_FAC * mean_dist)
+        print(mean_dist * self.penalty_fac)
+        print(self.penalty_fac)
+        print(self.weights.dot(rew))
+        return self.weights.dot(rew) - (self.penalty_fac * mean_dist)
 
 class CheckpointCallback(BaseCallback):
     """
@@ -73,6 +81,9 @@ class CheckpointCallback(BaseCallback):
             if self.verbose > 1:
                 print("Saving model checkpoint to {}".format(path))
         return True
+
+def euclidian_distance(p1, p2):
+    return np.linalg.norm(p1-p2)
 
 def most_occuring_sublist(list):
     return np.array(Counter(tuple(d) for d in list).most_common(1)[0][0])
@@ -130,26 +141,32 @@ def plot_compareMethods(experiemnt_id, distances_withComp, distances_withAbsRet,
     f.savefig(f"experiments/{experiemnt_id}/comp_methods_{optimal_weight}_noise_{noise}.png")    
 
 def plot_experimentNoise(experiment_id, all_distances, std_distances, all_weightsEstimates, std_weightsEstimates, noise_values, optimal_weight, method):
-    f, axes = plt.subplots(nrows=1, ncols=2, figsize=(20,7))
+    f, axes = plt.subplots(nrows=1, ncols=2, figsize=(25,10))
 
     print(std_distances)
     print(std_weightsEstimates)
 
     # Distances to optimal return
-    axes[0].set_title("Distance to optimal return")
-    axes[0].set_ylabel("Distance")
+    axes[0].set_title("Distance to optimal utility")
+    axes[0].set_ylabel("Utility Loss")
+    axes[0].set_xlabel("Iteration")
+
     
     for d, std, noise_value in zip(all_distances, std_distances, noise_values):
-        axes[0].errorbar(list(range(len(d))), d, yerr=std, label=noise_value, marker='o')
+        axes[0].errorbar(list(range(len(d))), d, yerr=std, label=f"{noise_value}%", marker='o', capsize=4)
     axes[0].legend()
     
     # Weights estimate
-    axes[1].set_title("Weight estimate")
-    axes[1].set_ylabel("W1 estimate")
-    for w, std, noise_value in zip(all_weightsEstimates, std_weightsEstimates, noise_values):
-        axes[1].errorbar(list(range(len(w))), w, yerr=std, label=noise_value, marker='o')
+    axes[1].set_title("Distance to optimal weights")
+    # axes[1].set_ylabel("$W_1$ estimate")
+    axes[1].set_ylabel("$| w^* - w |$")
+    axes[1].set_xlabel("Iteration")
 
-    axes[1].hlines(optimal_weight[1], xmin=0, xmax=8, label="optimal")
+
+    for w, std, noise_value in zip(all_weightsEstimates, std_weightsEstimates, noise_values):
+        axes[1].errorbar(list(range(len(w))), w, yerr=std, label=f"{noise_value}%", marker='o', capsize=4)
+
+    # axes[1].hlines(optimal_weight[1], xmin=0, xmax=len(w), label="optimal")
     axes[1].legend()
 
     f.savefig(f"experiments/{experiment_id}/noise_{optimal_weight}_{method}.png")
@@ -172,39 +189,39 @@ def plot_on_ternary_map(results, optimal_weights, env_name, method=None, experim
     
     # make the ternary plot
     figure, tax = ternary.figure(scale=100)
-    figure.set_size_inches(18, 12)
+    figure.set_size_inches(50, 50)
     scatters = []
     for solution_index in background_points:
         sol, scatter_points = background_points[solution_index]
 
         # Round and plot
-        float_formatter = "{:.2f}".format
+        float_formatter = "{:.3f}".format
         utility = float_formatter(np.dot(optimal_weights, np.array(sol)))
         sol = [float_formatter(x) for x in sol]
-        scatter = tax.scatter(scatter_points, s=200, label=f"Solution: {sol}\nUtility: {utility}")
+        scatter = tax.scatter(scatter_points, s=200, label=f"Utility: {utility}")
         scatters.append(scatter)
     
-    figure.legend(loc='lower center', frameon=True, fontsize=11, ncol=5)
+    figure.legend(loc='upper right', frameon=True, ncol=2)
 
 
     # plot the weights
     tax.plot(weight_estimations * 100, color="black", marker='o', label="Weights estimates")
 
-    tax.scatter([weight_estimations[0] * 100], marker="s", zorder=np.inf, color="black", label="Initial weights estimate", s=110)
-    # tax.scatter([weight_estimations[-1] * 100], marker="s", zorder=np.inf, color="black", label="Final estimation", s=120)
+    tax.scatter([weight_estimations[0] * 100], marker="s", zorder=np.inf, color="black", s=110)
+    tax.scatter([weight_estimations[1] * 100], marker="s", zorder=np.inf, color="black", s=110)
     tax.scatter([np.array(optimal_weights) * 100], marker="X", zorder=np.inf, color="black", s=150, label="Optimal weights")
     
     # figure.legend(handles = others, loc='upper right', frameon=True, fontsize=11, ncol=1)
 
 
-    tax.set_title("CCS", fontsize=20)
+    tax.set_title("CCS")
     tax.boundary(linewidth=2.0)
     tax.gridlines(multiple=5, color="blue")
     tax.ticks(axis='lbr', linewidth=1, multiple=5)
     tax.clear_matplotlib_ticks()
-    tax.left_axis_label("$w_2$", fontsize=20)
-    tax.right_axis_label("$w_1$", fontsize=20)
-    tax.bottom_axis_label("$w_0$", fontsize=20)
+    tax.left_axis_label("$w_2$")
+    tax.right_axis_label("$w_1$")
+    tax.bottom_axis_label("$w_0$")
     tax.get_axes().axis('off')
     if experiment_id == None:
         tax.show()
@@ -216,17 +233,17 @@ def plot_on_ternary_map(results, optimal_weights, env_name, method=None, experim
 def plot_2d_run(results, optimal_weights, method=None, experiment_id=None):
    
     weight_estimations = np.array(results["weights"])
-    stds =  np.array(results["stds"])[:, 1]
+    # stds =  np.array(results["stds"])[:, 1]
     trace = np.array(weight_estimations)[:, 1]
 
     num_iter = len(weight_estimations)
     y = np.arange(0, num_iter + 1, 0.01)
     weights_line = np.arange(0, 1.01, 0.01)
 
-    figure, ax = plt.subplots(figsize=(15, 10))
+    figure, ax = plt.subplots(figsize=(15, 12))
 
     for i, sol in enumerate(BST_SOLUTIONS[::-1]):
-        float_formatter = "{:.2f}".format
+        float_formatter = "{:.3f}".format
         utility = float_formatter(np.dot(optimal_weights, np.array(sol)))
         sol_string = [float_formatter(x) for x in sol]
         plt.scatter([], [], c=MATPLOTLIB_COLORS[i], label=f"Solution: {sol_string} \nUtility: {utility}")
@@ -247,13 +264,13 @@ def plot_2d_run(results, optimal_weights, method=None, experiment_id=None):
     plt.ylabel("iteration")
 
     # plt.plot(trace, list(range(len(trace))), marker='o', color="black")
-    plt.errorbar(trace, list(range(len(trace))), xerr=stds, marker='o', color="black", capsize=3)
+    plt.errorbar(trace, list(range(len(trace))), marker='o', color="black", capsize=3)
 
 
     figure.tight_layout()
-    figure.subplots_adjust(bottom=0.16)  
-    figure.legend(loc='lower center', frameon=True, fontsize=11, ncol=5)
-    
+    figure.subplots_adjust(bottom=0.19)  
+    figure.legend(loc='lower center', frameon=True, fontsize=12, ncol=5, )
+    # bbox_to_anchor=(0.5, -0.02)
     if experiment_id == None:
         plt.show()
     else:

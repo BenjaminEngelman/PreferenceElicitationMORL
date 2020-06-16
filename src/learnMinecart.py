@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 from minecart.envs.minecart_env import MinecartDeterministicEnv
-from src.utils import MultiObjRewardWrapper, MinecartObsWrapper, MinecartLessFuelMultiObjRewardWrapper
+from src.utils import MultiObjRewardWrapper, MinecartObsWrapper, MinecartMultiObjRewardWrapper
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.deepq.policies import MlpPolicy as DQNMlpPolicy
 from src.utils import CheckpointCallback
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     import uuid
 
-    weights = np.array([float(x) for x in sys.argv[2:]])
+    weights = np.array([float(x) for x in sys.argv[2:5]])
     arch = [20, 20, 20]
 
     # configure logging dir and type
@@ -69,21 +69,21 @@ if __name__ == "__main__":
     # configure logger
     configure()
 
-    def make_env(env_n):
+    def make_env(env_n, penalty_fac):
         env = MinecartDeterministicEnv()
         env = MinecartObsWrapper(env)
-        env = MultiObjRewardWrapper(env, weights)
+        env = MinecartMultiObjRewardWrapper(env, weights, penalty_fac)
         env = TimeLimit(env, max_episode_steps=1000)
         env = CSVLogger(env, os.environ['OPENAI_LOGDIR'] + f'_{env_n}')
         # env = DummyVecEnv([lambda: env])
         return env
 
 
-    n_envs = 2
+    n_envs = 1
 
 
     if sys.argv[1] == "A2C":
-        env = SubprocVecEnv([lambda i=i: make_env(i) for i in range(n_envs)])
+        env = SubprocVecEnv([lambda i=i: make_env(i, float(sys.argv[5])) for i in range(n_envs)])
 
         model = A2C(MlpPolicy,
                     env,
@@ -102,31 +102,31 @@ if __name__ == "__main__":
 
         checkpoint_callback = CheckpointCallback(
         save_freq=int(625e5), save_path='checkpoints/',
-        name_prefix=str(uuid.uuid4())[:4]
-        )
-
-    elif sys.argv[1] == "DQN":
-        env = make_env(0)
-        env = DummyVecEnv([lambda: env])
-
-        model = DQN(
-            DQNMlpPolicy,
-            env,
-            verbose=1,
-            # train_freq=500,
-            # tensorboard_log="src/tensorboard/",
-            gamma=0.98,
-            prioritized_replay=True,
-            policy_kwargs={'layers': arch},
-            learning_rate=3e-4,
-            # exploration_final_eps=0.01,
-
-        )   
-
-        checkpoint_callback = CheckpointCallback(
-        save_freq=int(10e6), save_path='checkpoints/',
         name_prefix=str(uuid.uuid4())[:4] + str(weights)
         )
+
+    # elif sys.argv[1] == "DQN":
+    #     env = make_env(0)
+    #     env = DummyVecEnv([lambda: env])
+
+    #     model = DQN(
+    #         DQNMlpPolicy,
+    #         env,
+    #         verbose=1,
+    #         # train_freq=500,
+    #         # tensorboard_log="src/tensorboard/",
+    #         gamma=0.98,
+    #         prioritized_replay=True,
+    #         policy_kwargs={'layers': arch},
+    #         learning_rate=3e-4,
+    #         # exploration_final_eps=0.01,
+
+    #     )   
+
+    #     checkpoint_callback = CheckpointCallback(
+    #     save_freq=int(10e6), save_path='checkpoints/',
+    #     name_prefix=str(uuid.uuid4())[:4] + str(weights)
+    #     )
 
     else:
         print("Wrong method")
