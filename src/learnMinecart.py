@@ -136,7 +136,5 @@ if __name__ == "__main__":
     #     save_freq=int(625e5), save_path='checkpoints/',
     #     name_prefix=str(uuid.uuid4())[:4]
     # )
-    print(f"runs/A2C_{str(uuid.uuid4())[:4]}_{weights}_{sys.argv[5].replace('.', '')}")
-    exit()
     model.learn(total_timesteps=int(12e7), callback=checkpoint_callback)
     model.save(f"saved_agents_DQN/{weights[0]}_{weights[1]}_{weights[2]}_{sys.argv[5].replace('.', '')}")
