@@ -101,7 +101,7 @@ if __name__ == "__main__":
         )
 
         checkpoint_callback = CheckpointCallback(
-        save_freq=int(625e5), save_path='checkpoints/',
+        save_freq=int(50e5), save_path='checkpoints/',
         name_prefix=str(uuid.uuid4())[:4] + str(weights) + sys.argv[5].replace('.', '')
         )
 
@@ -137,4 +137,4 @@ if __name__ == "__main__":
     #     name_prefix=str(uuid.uuid4())[:4]
     # )
     model.learn(total_timesteps=int(12e7), callback=checkpoint_callback)
-    model.save(f"saved_agents_DQN/{weights[0]}_{weights[1]}_{weights[2]}_{sys.argv[5].replace('.', '')}")
+    model.save(f"saved_agents_last/{weights[0]}_{weights[1]}_{weights[2]}_{sys.argv[5].replace('.', '')}")
