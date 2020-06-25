@@ -49,11 +49,18 @@ class MinecartMultiObjRewardWrapper(MultiObjRewardWrapper):
         cart_pos = self.cart.pos
         dist2mines = [euclidian_distance(cart_pos, mine_pos) for mine_pos in MINECART_MINES_POS]
         mean_dist = np.mean(dist2mines)
+        # min_dist = np.min(dist2mines)
+
         # print(rew[0], rew[1], rew[2], PENALTY_FAC * mean_dist)
         # print(mean_dist * self.penalty_fac)
         # print(self.penalty_fac)
         # print(self.weights.dot(rew))
-        return self.weights.dot(rew) - (self.penalty_fac * mean_dist)
+        if np.sum(self.cart.content) != self.capacity:
+            reward = self.weights.dot(rew) - (self.penalty_fac * mean_dist)
+        else:
+            reward = self.weights.dot(rew)
+
+        return reward
 
 class CheckpointCallback(BaseCallback):
     """
