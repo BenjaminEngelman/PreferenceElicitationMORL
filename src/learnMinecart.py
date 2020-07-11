@@ -1,16 +1,12 @@
 import numpy as np
 import sys
 from minecart.envs.minecart_env import MinecartDeterministicEnv
-from src.utils import MultiObjRewardWrapper, MinecartObsWrapper, MinecartMultiObjRewardWrapper
+from src.rl.minecartUtils import MinecartObsWrapper, MinecartMultiObjRewardWrapper
 from stable_baselines.common.policies import MlpPolicy
-from stable_baselines.deepq.policies import MlpPolicy as DQNMlpPolicy
-from src.utils import CheckpointCallback
 
 from stable_baselines import PPO2, A2C, DQN
 from stable_baselines.logger import configure
-from stable_baselines.common import make_vec_env
 from gym.wrappers import TimeLimit
-from stable_baselines.common import make_vec_env
 from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines.common.callbacks import CheckpointCallback
 

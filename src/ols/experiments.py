@@ -1,6 +1,6 @@
 from src.ols.main_2_objectives import ols
-from src.env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
 from numpy.random import RandomState
+from src.constants import BST_SOLUTIONS
 
 
 
@@ -10,7 +10,7 @@ def run_BST():
     """
     env = "synt_bst"
     random_state = RandomState(42)
-
+    print(BST_SOLUTIONS)
     ols(env, random_state)
 
 

@@ -4,7 +4,6 @@ import gym
 import numpy as np
 import cv2
 
-
 UP = 0
 RIGHT = 1
 DOWN = 2
@@ -12,7 +11,6 @@ LEFT = 3
 
 
 class DeepSeaTreasureEnv(discrete.DiscreteEnv):
-
     metadata = {'render.modes': ['human', 'rgb_array']}
 
     def __init__(self, width=12):
@@ -61,7 +59,7 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
         u = []
         treasures = self._treasures()
         for p in treasures.keys():
-            for i in range(p[0]+1, self.shape[0]):
+            for i in range(p[0] + 1, self.shape[0]):
                 u.append((i, p[1]))
         return u
 
@@ -98,23 +96,24 @@ class DeepSeaTreasureEnv(discrete.DiscreteEnv):
 
     def render(self, mode='rgb_array'):
         tile_size = 30
-        img = np.full((self.shape[0]*tile_size,
-                      self.shape[1]*tile_size, 3), 255, np.uint8)
+        img = np.full((self.shape[0] * tile_size,
+                       self.shape[1] * tile_size, 3), 255, np.uint8)
 
         y = np.tile(
-            np.arange(tile_size, (self.shape[0]+1)*tile_size, tile_size), self.shape[1])
+            np.arange(tile_size, (self.shape[0] + 1) * tile_size, tile_size), self.shape[1])
         x = np.repeat(
-            np.arange(tile_size, (self.shape[1]+1)*tile_size, tile_size), self.shape[0])
+            np.arange(tile_size, (self.shape[1] + 1) * tile_size, tile_size), self.shape[0])
         for x_i in x:
             for y_i in y:
                 cv2.circle(img, (x_i, y_i), 0, (255, 0, 0))
 
         for c, t in self._treasures().items():
             cv2.putText(img, str(
-                t), (tile_size*c[1]+tile_size//2, tile_size*c[0]+tile_size//2), cv2.FONT_HERSHEY_SIMPLEX, .2, 255)
+                t), (tile_size * c[1] + tile_size // 2, tile_size * c[0] + tile_size // 2), cv2.FONT_HERSHEY_SIMPLEX,
+                        .2, 255)
         position = np.unravel_index(self.s, self.shape)
-        cv2.putText(img, 'sub', (tile_size*position[1]+tile_size//2, tile_size *
-                    position[0]+tile_size//2), cv2.FONT_HERSHEY_SIMPLEX, .2, 255)
+        cv2.putText(img, 'sub', (tile_size * position[1] + tile_size // 2, tile_size *
+                                 position[0] + tile_size // 2), cv2.FONT_HERSHEY_SIMPLEX, .2, 255)
 
         return img
 
@@ -125,7 +124,6 @@ class BountyfulSeaTreasureEnv(DeepSeaTreasureEnv):
         super(BountyfulSeaTreasureEnv, self).__init__(width=width)
 
     def _treasures(self):
-
         return {
             (2, 0): 18,
             (2, 1): 26,
@@ -139,8 +137,8 @@ class BountyfulSeaTreasureEnv(DeepSeaTreasureEnv):
             (11, 9): 100
         }
 
+
 if __name__ == '__main__':
-    
     import matplotlib.pyplot as plt
 
     env = BountyfulSeaTreasureEnv()

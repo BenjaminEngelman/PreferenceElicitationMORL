@@ -3,13 +3,9 @@ from time import time
 import numpy as np
 import queue
 import math
-from mpl_toolkits import mplot3d
-import matplotlib.pyplot as plt
 import matplotlib.tri as tri
-from itertools import combinations 
-from src.utils import get_best_sol
-from src.ols.utils import create_3D_pareto_front, plot_3D_pareto_front, compare_3D_pareto_fronts
-from src.solver import Solver
+from itertools import combinations
+from src.rl.solver import SingleObjSolver
 
 
 
@@ -92,7 +88,7 @@ def newCornerWeights(V_PI, S, W):
 
 def ols(S=[], W=[], Q=queue.PriorityQueue(), num_iter=0, run_name="ols_run"):
     # pareto_front = create_3D_pareto_front(size=10, seed=0)
-    solver = Solver()
+    solver = SingleObjSolver()
     start = time()
 
     # Add the two extremum values for the weights in the Queue
@@ -115,8 +111,12 @@ def ols(S=[], W=[], Q=queue.PriorityQueue(), num_iter=0, run_name="ols_run"):
 
         # print("Solving for weights: ", w)
         W.append(list(w))
-        obj1, obj2, obj3 = solver.solve("minecart", w)
-        
+        if run_name[0:4] == "synt":
+            obj1, obj2, obj3 = solver.solve(run_name, w)
+
+        else:
+            print("HERE2")
+            obj1, obj2, obj3 = solver.solve("minecart", w)
         # obj1, obj2, obj3 = get_best_sol(pareto_front, w)
         V_PI = [obj1, obj2, obj3]
 
@@ -136,18 +136,18 @@ def ols(S=[], W=[], Q=queue.PriorityQueue(), num_iter=0, run_name="ols_run"):
 
         num_iter += 1
 
-        # Save S, Q, W, num_iter
-        with open(f'runs_ols/{run_name}/S.pkl', 'wb') as handle:
-            pickle.dump(S, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        # # Save S, Q, W, num_iter
+        # with open(f'runs_ols/{run_name}/S.pkl', 'wb') as handle:
+        #     pickle.dump(S, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
-        with open(f'runs_ols/{run_name}/Q.pkl', 'wb') as handle:
-            pickle.dump(Q.queue, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        # with open(f'runs_ols/{run_name}/Q.pkl', 'wb') as handle:
+        #     pickle.dump(Q.queue, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
-        with open(f'runs_ols/{run_name}/W.pkl', 'wb') as handle:
-            pickle.dump(W, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        # with open(f'runs_ols/{run_name}/W.pkl', 'wb') as handle:
+        #     pickle.dump(W, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
-        with open(f'runs_ols/{run_name}/num_iter.pkl', 'wb') as handle:
-            pickle.dump(num_iter, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        # with open(f'runs_ols/{run_name}/num_iter.pkl', 'wb') as handle:
+        #     pickle.dump(num_iter, handle, protocol=pickle.HIGHEST_PROTOCOL)
         
         print(Q.queue)
 
@@ -159,32 +159,31 @@ def ols(S=[], W=[], Q=queue.PriorityQueue(), num_iter=0, run_name="ols_run"):
     
 
 if __name__ == "__main__":
-    import os
-    import argparse
-    import pickle
+    # os.mkdir(f'runs_ols/synt')
+    ols(run_name="synt_150")
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--name")
-    parser.add_argument("--resume", action="store_true")
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("--name")
+    # parser.add_argument("--resume", action="store_true")
+    # args = parser.parse_args()
 
-    if not os.path.isdir('runs_ols'):
-        os.mkdir("runs_ols")
+    # if not os.path.isdir('runs_ols'):
+    #     os.mkdir("runs_ols")
     
-    if not args.resume:
-        if not os.path.isdir(f'runs_ols/{args.name}'):
-            os.mkdir(f'runs_ols/{args.name}')
-        ols(run_name=args.name)
+    # if not args.resume:
+    #     if not os.path.isdir(f'runs_ols/{args.name}'):
+    #         os.mkdir(f'runs_ols/{args.name}')
+    #     ols(run_name=args.name)
     
-    else:
-        path = f'runs_ols/{args.name}'
-        S = pickle.load(open(f'{path}/S.pkl', 'rb'))
-        W = pickle.load(open(f'{path}/W.pkl', 'rb'))
-        num_iter = pickle.load(open(f'{path}/num_iter.pkl', 'rb'))
-        # Hack because we  cannot pickle PrioritiQueue
-        # We picke its its internal queue which is a list
-        _queue = pickle.load(open(f'{path}/Q.pkl', 'rb'))
-        Q = queue.PriorityQueue()
-        Q.queue = _queue
+    # else:
+    #     path = f'runs_ols/{args.name}'
+    #     S = pickle.load(open(f'{path}/S.pkl', 'rb'))
+    #     W = pickle.load(open(f'{path}/W.pkl', 'rb'))
+    #     num_iter = pickle.load(open(f'{path}/num_iter.pkl', 'rb'))
+    #     # Hack because we  cannot pickle PrioritiQueue
+    #     # We picke its its internal queue which is a list
+    #     _queue = pickle.load(open(f'{path}/Q.pkl', 'rb'))
+    #     Q = queue.PriorityQueue()
+    #     Q.queue = _queue
     
-        ols(S=S, W=W, Q=Q, num_iter=num_iter, run_name=args.name)
+    #     ols(S=S, W=W, Q=Q, num_iter=num_iter, run_name=args.name)

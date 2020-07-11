@@ -11,11 +11,8 @@ sys.path.insert(0, '..')
 
 
 class User(object):
-    def __init__(self, num_objectives=2, noise_pct=0.1, env=None, random_state=None, weights=None, num_virtual_comps=10):
-        # Hack to normalize utilites to 0 - 1 range
-        # This works only for the BountyfulSeaTreasureEnv
-        # TODO: Find another way to normalize that is not hardcoded.
-
+    def __init__(self, num_objectives=2, noise_pct=0.1, env=None, random_state=None, weights=None,
+                 num_virtual_comps=10):
         self.random_state = random_state
         self.num_objectives = num_objectives
         self.num_virtual_comps = num_virtual_comps
@@ -32,24 +29,25 @@ class User(object):
         else:
             self.hidden_weights = self.random_state.uniform(0.0, 1, num_objectives)
             self.hidden_weights /= np.sum(self.hidden_weights)
-        
+
         # Trick to add noise in % to the utilites
         # Deep sea treasure
         if self.num_objectives == 2:
             utilities = [self.hidden_weights[0] * sol[0] + self.hidden_weights[1] * sol[1] for sol in BST_SOLUTIONS]
-        
+
         # Synt 3 obj
         elif (self.num_objectives == 3) and (env != "minecart"):
-            utilities = [self.hidden_weights[0] * sol[0] + self.hidden_weights[1] * sol[1] + self.hidden_weights[2] * sol[2] for sol in create_3D_pareto_front()]
+            utilities = [
+                self.hidden_weights[0] * sol[0] + self.hidden_weights[1] * sol[1] + self.hidden_weights[2] * sol[2] for
+                sol in create_3D_pareto_front()]
 
         # Minecart
         else:
+            # TODO: check when the CCS is known
             utilities = [1.11, -1]
-
 
         utility_range = max(utilities) - min(utilities)
         self.std_noise = (noise_pct / 100) * utility_range
-        
 
     def get_utility(self, values, with_noise=True):
         noise = self.random_state.normal(0, self.std_noise)
@@ -58,16 +56,16 @@ class User(object):
             utility += values[i] * self.hidden_weights[i]
         if with_noise:
             utility += noise
-        
+
         return utility
-    
 
     def save_comparison(self, p1, p2, result):
         """
         p1 and p2 are the values of the policies
-        result is 1 if user preferes p1 over p2, 0 otherwise 
+        result is 1 if user prefers p1 over p2, 0 otherwise
         """
         diff = p1 - p2
+        # Each comparison is added 20 times in the dataset
         for _ in range(20):
             self.comparisons.append(diff)
             self.outcomes.append(float(result))
@@ -76,7 +74,7 @@ class User(object):
         dominant = p1 if list(dominated) == list(p2) else p2
         for _ in range(self.num_virtual_comps):
             if self.num_objectives == 3:
-                synthetic_p = [np.random.uniform(0,dominated[i]) for i in range(len(dominated))]
+                synthetic_p = [np.random.uniform(0, dominated[i]) for i in range(len(dominated))]
             elif self.num_objectives == 2:
                 synthetic_p = [
                     np.random.uniform(BST_MIN_TREASURE, dominated[0]),
@@ -84,14 +82,14 @@ class User(object):
                 ]
 
             if np.random.uniform() < 0.5:
-                diff = synthetic_p - dominant 
+                diff = synthetic_p - dominant
                 self.comparisons.append(diff)
                 self.outcomes.append(0)
             else:
-                diff = dominant -  synthetic_p
+                diff = dominant - synthetic_p
                 self.comparisons.append(diff)
                 self.outcomes.append(1)
-        
+
         # print(self.comparisons)
 
         # print("Current dataset: ")
@@ -114,61 +112,42 @@ class User(object):
         return prefered, rejected, u_pref, u_rej
 
     def current_map(self, weights=None):
+        """
+        Get the MAP weights of the Bayesian Logistic Regression
+        :param weights:
+        :return: normalized MAP weights, non-normalized MAP weights, H matrix
+        """
         if len(self.outcomes) > 0:
-            
-            if False:
-                clf = linear_model.LogisticRegression(C=1e5)
-                clf.fit(self.comparisons, self.outcomes, )
-                unnorm_w = clf.coef_[0]
+            w_prior = np.ones(len(self.hidden_weights)) / len(self.hidden_weights)
 
-            else:
-            
-                bnd = (0, 1)
-                bnd_list = []
-                for _ in np.arange(self.num_objectives):
-                    bnd_list.append(bnd)
+            H_prior_diag = np.ones(len(self.hidden_weights)) * (1.0 / 0.33) ** 2
 
-                if weights is not None:
-                    # w_prior = weights
-                    w_prior = np.ones(len(self.hidden_weights)) / len(self.hidden_weights)
+            w_fit, H_fit = bl.fit_bayes_logistic(
+                np.array(self.outcomes),
+                np.array(self.comparisons),
+                w_prior,
+                H_prior_diag,
+            )
 
+            unnorm_w = w_fit
+        unnorm_w[unnorm_w < 0] = 0  # No negative values
 
-                else:
-                    w_prior = np.ones(len(self.hidden_weights)) / len(self.hidden_weights)
-                    # w_prior = np.zeros(self.num_objectives)
+        # Project weights on the weight simplex
+        sum_w = sum(unnorm_w)
+        if sum_w == 0:
+            sum_w = 1e-16
+        norm_w_posterior = unnorm_w / sum_w
 
+        self.mean_w = unnorm_w
+        self.H = H_fit
 
-                # H_prior_diag = np.ones(self.num_objectives)*0.05
-                H_prior_diag = np.ones(len(self.hidden_weights)) * (1.0 / 0.33)   ** 2
-                # H_prior_diag = np.array([2] * self.num_objectives)
-
-                w_fit, H_fit = bl.fit_bayes_logistic(
-                    np.array(self.outcomes),
-                    np.array(self.comparisons),
-                    w_prior,
-                    H_prior_diag,
-                )
-                # print(1 / H_fit)
-
-                # print(samples) 
-                # exit()
-
-                unnorm_w = w_fit
-            unnorm_w[unnorm_w < 0] = 0 # No negative values
-
-            sum_w = sum(unnorm_w)
-            if sum_w == 0:
-                sum_w = 1e-16
-            norm_w_posterior =  unnorm_w / sum_w
-
-            self.mean_w = unnorm_w
-            self.H = H_fit
-
-            return norm_w_posterior, w_fit, H_fit
-            # return norm_w_posterior, 0, 0
-
+        return norm_w_posterior, w_fit, H_fit
 
     def sample_weight_vector(self):
+        """
+        Sample weights from the posterior of the Bayesian Logistic Regression
+        :return:
+        """
         w_vec = self.mean_w
         h_vec = self.H
 
@@ -177,7 +156,6 @@ class User(object):
         w_sample = []
         for i in range(len(w_vec)):
             stdev = 1.0 / math.sqrt(h_vec[i])
-            # print("stdev "+str(i)+" "+str(stdev))
             ws = self.random_state.normal(w_vec[i], stdev)
             w_sample.append(ws)
         w_sample = np.array(w_sample)

@@ -1,13 +1,9 @@
 import sys
 
 from minecart.envs.minecart_env import MinecartDeterministicEnv
-from src.utils import MultiObjRewardWrapper, MinecartObsWrapper, MinecartMultiObjRewardWrapper
-
-from stable_baselines import DQN
-from stable_baselines.common.policies import MlpPolicy
+from src.rl.minecartUtils import MinecartObsWrapper, MultiObjRewardWrapper, MinecartMultiObjRewardWrapper
 from stable_baselines import PPO2, A2C, DQN
 import numpy as np
-import matplotlib.pyplot as plt
 
 # weights = [0.35,0.08,0.5700000000000001]
 weights = np.array([0.75,0.1,0.15])

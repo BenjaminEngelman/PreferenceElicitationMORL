@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from src.utils import argmax
 from src.constants import BST_DIRECTIONS, GAMMA_BST
 
+
 class Agent():
     def __init__(self, env, decay, random_state):
         self.random_state = random_state
@@ -21,18 +22,17 @@ class Agent():
         if self.random_state.uniform(0, 1) < self.epsilon:
             a = self.random_state.randint(self.n_actions)
         return a
-    
+
     def decayEpsilon(self):
         if self.epsilon > self.min_epsilon:
             self.epsilon *= self.decaying_factor
-    
-    def reset(self):
-        raise NotImplementedError()   
 
+    def reset(self):
+        raise NotImplementedError()
 
 
 class Qlearning(Agent):
-    
+
     def __init__(self, env, decay=0.999999, random_state=1):
         super().__init__(env, decay=decay, random_state=random_state)
         self.n_states = env.nS
@@ -40,7 +40,7 @@ class Qlearning(Agent):
 
         # self.qtable = [np.array([0.]*self.n_actions) for state in range(n_states)]
         self.qtable = [np.random.uniform(-1, 175, self.n_actions) for state in range(self.n_states)]
-    
+
     def learn(self, n_episodes):
         learning_stats = {
             "average_cumulative_reward": [],
@@ -64,9 +64,9 @@ class Qlearning(Agent):
 
                 # Perform the action
                 next_state, reward, terminate, _ = self.env.step(action)
-                
+
                 # Update agent
-                self.update( state, action, reward, next_state, terminate )
+                self.update(state, action, reward, next_state, terminate)
 
                 # Update statistics
                 cumulative_reward += reward
@@ -83,14 +83,14 @@ class Qlearning(Agent):
             learning_stats["average_cumulative_reward"].append(ep_stats[2])
 
         return learning_stats
-    
+
     def reset(self):
         """
         Reset the Qtable and the epsilon
         """
         self.qtable = [np.random.uniform(-1, 175, self.n_actions) for state in range(self.n_states)]
         self.epsilon = self.max_epsilon
-    
+
     def update(self, s, a, r, n_s, d):
         """
         Q-learning update rule 
@@ -99,21 +99,21 @@ class Qlearning(Agent):
         target = r if d else r + self.gamma * (max(self.qtable[n_s]))
         self.qtable[s][a] += self.lr * (target - self.qtable[s][a])
         self.decayEpsilon()
-    
+
     def get_action(self, state):
         """
         Epsilon-Greedily select action for a state 
         """
         q_values = self.qtable[state]
         return self.epsilonGreedy(q_values)
-    
+
     def predict(self, state):
         """
         Greedily select action for a state
         """
         q_values = self.qtable[state]
-        return argmax(q_values), '' # for compatibilty
-    
+        return argmax(q_values), ''  # for compatibilty
+
     def demonstrate(self):
         """
         Demonstrate the learned policy
@@ -128,8 +128,6 @@ class Qlearning(Agent):
             state, _, terminate, _ = self.env.step(action)
             step += 1
         plt.imshow(self.env.render())
-        
-
 
     def show_qtable(self):
         table = np.chararray((12, 12))
@@ -140,16 +138,3 @@ class Qlearning(Agent):
                 table[i // 12, i % 12] = "N"
         print(table)
         print(self.epsilon)
-
-
-if __name__ == "__main__":
-    from minecart.envs.minecart_env import MinecartDeterministicEnv
-
-    env = MinecartDeterministicEnv()
-    weights = np.array([0.99, 0.0, 0.01])
-    s = env.reset()
-    agent = MODQN(env)
-    agent.learn(10000, weights)
-
-
-    

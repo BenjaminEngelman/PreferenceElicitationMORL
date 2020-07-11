@@ -1,9 +1,5 @@
-# import sys
-# sys.path.insert(0, '..')
-
-from src.ols.utils import plot_ccs, plot_ccs_2
-from src.env import BountyfulSeaTreasureEnv, DeepSeaTreasureEnv
-from src.solver import Solver
+from src.ols.utils import plot_ccs, plot_ccs_3
+from src.rl.solver import SingleObjSolver
 from recordclass import recordclass
 from time import time
 import numpy as np
@@ -12,10 +8,6 @@ import math
 
 
 
-##########################################
-# TODO :
-
-##########################################
 
 MIN_IMPROVEMENT = 0.
 
@@ -25,7 +17,7 @@ V_P = recordclass("V_P", ["obj1", "obj2", "start", "end"])
 
 # A CornerWeight contains: - the value (w1) of the weight
 #                          - its maximum possible improvement
-CornerWeight = recordclass("CornerWeight", ["val", "improvement"])
+CornerWeight = recordclass("CornerWeight", ["val", "y", "improvement"])
 
 Point = recordclass("Point", ["x", "y"])
 
@@ -106,7 +98,7 @@ def newCornerWeights(V_PI, S):
                 V_PI.start.x = cornerW
                 V_PI.start.y = Y
 
-            cornerWeights.append(CornerWeight(val=cornerW, improvement=None))
+            cornerWeights.append(CornerWeight(val=cornerW, y=Y, improvement=None))
 
     return cornerWeights
 
@@ -129,7 +121,7 @@ def estimateImprovement(cornerWeight, S):
 
 def ols(env_name, random_state):
     start = time()
-    solver = Solver()
+    solver = SingleObjSolver()
 
     S = []  # Partial CCS
     S_V_values = []
@@ -138,8 +130,8 @@ def ols(env_name, random_state):
 
     # Add the two extremum values for the weights in the Queue
     # With infinite priority
-    Q.put((-math.inf, CornerWeight(val=0.0, improvement=-math.inf)))
-    Q.put((-math.inf, CornerWeight(val=1.0, improvement=-math.inf)))
+    Q.put((-math.inf, CornerWeight(val=0.0, y=None, improvement=-math.inf)))
+    Q.put((-math.inf, CornerWeight(val=1.0, y=None, improvement=-math.inf)))
 
     num_iter = 0
     while not Q.empty():
@@ -164,14 +156,16 @@ def ols(env_name, random_state):
             # Remove obseletes Vs from S
             removeObseleteValueVectors(V_PI, S)
 
-            # plot CSS + New value vector
-            plot_ccs_2(S + [V_PI])
+
 
             # Find new cornerweights
             W_V_PI = newCornerWeights(V_PI, S)
             
             S.append(V_PI)
             S_V_values.append(V_PI.obj1)
+            
+            # # plot CSS + New value vector
+            plot_ccs(S, W_V_PI)
 
             removeObseleteWeights(Q, V_PI.start.x, V_PI.end.x)
             for cornerWeight in W_V_PI:
@@ -185,4 +179,4 @@ def ols(env_name, random_state):
     total_time = time() - start
     print("Number of iterations: %d" % num_iter)
     print("Time (s): %.2f" % total_time)
-    plot_ccs_2(S)
+    plot_ccs_3(S, name="test_2")
