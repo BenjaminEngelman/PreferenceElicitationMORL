@@ -407,7 +407,6 @@ def fit_bayes_logistic(y, X, wprior, H, weights=None, solver='Newton-CG', bounds
     if solver == 'Newton-CG':
 
         if len(H.shape) == 2:
-
             ww = minimize(f_log_posterior, wprior, args=(wprior, H, y, X, weights), jac=g_log_posterior,
                           hess=H_log_posterior, method='Newton-CG', options={'maxiter': maxiter})
             w_fit = ww.x

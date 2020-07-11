@@ -12,7 +12,7 @@ from src.user import User
 from scipy.optimize import minimize, lsq_linear
 import matplotlib.pyplot as plt
 
-N_STEPS = 4
+N_STEPS = 10
 
 
 def estimateWeightsOpti(X, y, current_estimate=None):
@@ -60,7 +60,7 @@ def estimateWeightsReg(X, y):
 
 
 
-def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
+def findWeightsWithAbsReturns(user, env_name, seed, method="opti", solver_calls_budget=10):
     random_state = RandomState(seed)
 
     # Setup of the environment and agent
@@ -76,14 +76,14 @@ def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
     X, y = [], []
 
     # We start with an estimate of the weights weights
-    if env_name in ["synt", "minecart"]:
+    if env_name in ["synt", "synt_20", "minecart"]:
         weights = np.array([0.75, 0.1, 0.15])
     else:
         weights = np.ones(n_obj) / n_obj
 
 
     it = 0
-    while it < N_STEPS:
+    while it < solver_calls_budget:
         solver = Solver() # Used to train and evaluate the agent on the environements
 
         logging.info("Iteration %d" % it)
@@ -143,9 +143,10 @@ def findWeightsWithAbsReturns(user, env_name, seed, method="opti"):
 
 if __name__ == "__main__":
     from src.utils import plot_weight_estimations, plot_on_ternary_map, plot_2d_run
+    from src.utils import get_best_sol_BST
     ts = datetime.datetime.now().timestamp()
-    logging.basicConfig(
-        format='%(message)s', filename=f'src/withAbsReturns/logs/experiment_{ts}.log', level=logging.INFO)
+    # logging.basicConfig(
+    #     format='%(message)s', filename=f'src/withAbsReturns/logs/experiment_{ts}.log', level=logging.INFO)
 
     seed = 1
     rs = RandomState(seed)
@@ -155,10 +156,22 @@ if __name__ == "__main__":
     # plot_weight_estimations(logs, user_w)
 
     # user_w = [0.3, 0.3, 0.4] 
-    user_w = [0.2, 0.8] 
+    user_w = [0.3, 0.7]
 
-    env_name = "synt_bst"
-    user = User(num_objectives=2, noise_pct=50, random_state=rs, weights=user_w)
-    logs = findWeightsWithAbsReturns(user, env_name=env_name, seed=seed)
-    plot_2d_run(logs, user_w)
-    # plot_on_ternary_map(logs, user_w, env_name)
+    random_state = RandomState(42)
+
+    while True:
+        user_w = random_state.uniform(0.0, 1, 2)
+        user_w /= np.sum(user_w)
+
+        best_sol = get_best_sol_BST(user_w)
+
+        env_name = "synt_bst"
+        user = User(num_objectives=2, noise_pct=10.0, random_state=rs, weights=user_w)
+        logs = findWeightsWithAbsReturns(user, env_name=env_name, seed=seed, solver_calls_budget=10)
+        if list(logs["returns"][-1]) != list(best_sol):
+            print(user_w)
+            plot_2d_run(logs, user_w)
+            break
+
+        # plot_on_ternary_map(logs, user_w, env_name)

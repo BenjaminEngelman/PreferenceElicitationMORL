@@ -1,18 +1,14 @@
 import numpy as np
-from numpy.random import RandomState
-import matplotlib.pyplot as plt
 
 from src.agents import Qlearning
-from src.env import BountyfulSeaTreasureEnv
+from src.RL_envs.deepSeaTreasures import BountyfulSeaTreasureEnv
 from minecart.envs.minecart_env import MinecartDeterministicEnv
-from src.constants import STEPS_BST, STEPS_MINECART_COLD_START, STEPS_MINECART_HOT_START, N_STEPS_BEFORE_CHECKPOINT, N_ENVS_A2C
-from src.utils import MinecartObsWrapper, MultiObjRewardWrapper, most_occuring_sublist
-from src.utils import get_best_sol, get_best_sol_BST, CheckpointCallback
+from src.constants import STEPS_BST, STEPS_MINECART_COLD_START, N_ENVS_A2C
+from src.utils import MinecartObsWrapper, MultiObjRewardWrapper
+from src.utils import get_best_sol, get_best_sol_BST
 from src.ols.utils import create_3D_pareto_front
 
-
-from stable_baselines import A2C
-from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
+from stable_baselines.common.vec_env import SubprocVecEnv
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines import A2C
 from gym.wrappers import TimeLimit
@@ -84,6 +80,9 @@ class Solver(object):
     Train and evaluate an agent in its environment
     """
 
+    def __init__(self):
+        self.n_calls = 0
+
     def eval_agent(self, agent, env_name, w, n_runs=1):
         if env_name == "bst":
             agent.env = BountyfulSeaTreasureEnv()
@@ -119,18 +118,22 @@ class Solver(object):
         return res
 
     def solve(self, env_name, weights, random_state=None):
+        self.n_calls += 1
+
         if env_name == "bst":
             n_eval_runs = 1
             env = MultiObjRewardWrapper(BountyfulSeaTreasureEnv(), weights)
             learning_steps = STEPS_BST
             agent = Qlearning(env, decay=0.999997, random_state=random_state)
-
-        elif env_name == "synt":
-            env = create_3D_pareto_front(10)
-            return get_best_sol(env, weights)
-        
+            
         elif env_name == "synt_bst":
             return get_best_sol_BST(weights)
+
+        elif env_name[0:4] == "synt":
+            env = create_3D_pareto_front(size=int(env_name.split('_')[-1]))
+            return get_best_sol(env, weights)
+        
+
 
         elif env_name == "minecart":
             n_eval_runs = 50
